@@ -62,11 +62,13 @@ export default function ReviewDetail() {
           )}
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {l.imageUrls.map((src) => (
-            <div key={src} className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted">
-              <Image src={src} alt="" fill sizes="300px" className="object-cover" />
-            </div>
+          {l.imageUrls.map((src, i) => (
+            <a key={src} href={src} target="_blank" rel="noreferrer" className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted ring-primary hover:ring-2">
+              <Image src={src} alt={`Photo ${i + 1}`} fill sizes="300px" className="object-cover" />
+              {i === 0 && <span className="absolute top-1.5 left-1.5 rounded-full bg-black/65 px-2 py-0.5 text-[11px] text-white">Cover</span>}
+            </a>
           ))}
+          {l.imageUrls.length === 0 && <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">{t("noPhotos")}</p>}
         </div>
         <p className="text-sm whitespace-pre-line text-muted-foreground">{l.description}</p>
         <dl className="grid gap-2 text-sm sm:grid-cols-2">
@@ -102,7 +104,9 @@ export default function ReviewDetail() {
 
         {d.videos.length > 0 && (
           <section>
-            <h3 className="mb-2 font-semibold">Videos</h3>
+            <h3 className="mb-2 font-semibold">
+              {t("videosHeading")} · {fmt.digits(d.videos.length)}
+            </h3>
             <ul className="grid gap-3 sm:grid-cols-2">
               {d.videos.map((v) => (
                 <li key={v._id} className="rounded-xl border p-2 text-xs">
@@ -130,7 +134,7 @@ export default function ReviewDetail() {
         )}
       </div>
 
-      <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+      <aside className="order-first space-y-4 lg:sticky lg:top-20 lg:order-none lg:self-start">
         <div className="rounded-2xl border bg-card p-4 shadow-soft">
           <h3 className="font-semibold">{t("checklist")}</h3>
           <ul className="mt-2 space-y-1.5 text-sm">
@@ -192,6 +196,18 @@ export default function ReviewDetail() {
                 <Button className="flex-1" variant="outline" onClick={() => run(() => approve({ id: listingId, verify: true }), true)}>
                   {t("approveVerify")}
                 </Button>
+              </div>
+              <div className="flex flex-wrap gap-1.5" aria-label={t("rejectPresets")}>
+                {(["photos", "price", "documents", "duplicate", "location"] as const).map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setReason((r) => (r.trim() ? `${r.trim()} ${t(`reasons.${k}`)}` : t(`reasons.${k}`)))}
+                    className="rounded-full border px-2.5 py-1 text-xs hover:border-primary/50 hover:bg-muted"
+                  >
+                    + {t(`reasonLabels.${k}`)}
+                  </button>
+                ))}
               </div>
               <label className="block text-sm font-medium">
                 {t("rejectReason")}

@@ -70,7 +70,7 @@ export default function MapView({
     () => (label: string, active: boolean) =>
       L.divIcon({
         className: "",
-        html: `<span style="display:inline-block;transform:translate(-50%,-100%);white-space:nowrap;padding:3px 8px;border-radius:999px;font:600 12px/1.2 var(--font-jakarta),sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.25);background:${active ? "var(--warm)" : "var(--primary)"};color:${active ? "var(--warm-foreground)" : "var(--primary-foreground)"}">${label}</span>`,
+        html: `<span style="display:inline-block;transform:translate(-50%,-100%);white-space:nowrap;padding:4px 9px;border-radius:999px;font:700 12px/1.2 var(--font-jakarta),sans-serif;box-shadow:var(--elev-2);border:1.5px solid rgba(255,255,255,.85);background:${active ? "var(--warm)" : "var(--primary)"};color:${active ? "var(--warm-foreground)" : "var(--primary-foreground)"}">${label}</span>`,
         iconSize: [0, 0],
       }),
     [],
@@ -89,19 +89,22 @@ export default function MapView({
                 setFly([p.lat, p.lng]);
                 markers.current.get(p._id)?.openPopup();
               }}
-              className={cn("w-full rounded-xl border bg-card p-3 text-left transition hover:border-primary/50", selected === p._id && "border-primary ring-1 ring-primary")}
+              className={cn(
+                "w-full rounded-xl border bg-card p-3 text-left shadow-elev-1 transition hover:border-primary/50",
+                selected === p._id && "border-primary ring-1 ring-primary",
+              )}
             >
               <p className="line-clamp-1 text-sm font-semibold">{p.title}</p>
               <p className="text-xs text-muted-foreground">
                 {tl(p.landType)} · {fmt.size(p.sizeValue, p.sizeUnit)}
               </p>
-              <p className="mt-1 font-heading font-bold text-primary">{fmt.price(p.price)}</p>
+              <p className="mt-1 font-heading font-extrabold text-price">{fmt.price(p.price)}</p>
             </button>
           </li>
         ))}
         {pins?.length === 0 && <li className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">{t("emptyTitle")}</li>}
       </ul>
-      <div className="order-1 overflow-hidden rounded-2xl border lg:order-2">
+      <div className="order-1 overflow-hidden rounded-2xl border shadow-elev-2 lg:order-2">
         <MapContainer center={center} zoom={zoom} scrollWheelZoom className="h-[55vh] w-full lg:h-[70vh]" style={{ zIndex: 0 }}>
           <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <BoundsWatcher onChange={setBounds} />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { BadgeCheck, CheckCircle2, Loader2, Phone, ShieldAlert } from "lucide-react";
+import { BadgeCheck, CheckCircle2, Loader2, MessageCircle, Phone, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -12,6 +12,13 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useFmt } from "@/hooks/use-fmt";
 import { errorMessage } from "@/lib/client";
+
+/** wa.me link for a Bangladeshi number (01XXXXXXXXX / +8801XXXXXXXXX). */
+export function whatsappHref(phone: string, text?: string) {
+  let d = phone.replace(/\D/g, "");
+  if (d.startsWith("0")) d = `88${d}`;
+  return `https://wa.me/${d}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
+}
 
 type Seller = {
   _id: Id<"users">;
@@ -51,14 +58,18 @@ export function ContactPanel({
   viewer,
   active,
   onRevealLocation,
+  onContact,
 }: {
   listingId: Id<"listings">;
   seller: Seller;
   viewer: { signedIn: boolean; isOwner: boolean; hasInquired: boolean };
   active: boolean;
   onRevealLocation: (p: { lat: number; lng: number; address: string | null; plot: string | null }) => void;
+  /** Called once the seller's contact is revealed (after an inquiry), for the mobile contact bar. */
+  onContact?: (c: { phone: string | null; plot: string | null }) => void;
 }) {
   const t = useTranslations("listing");
+  const td = useTranslations("listingDetail");
   const pathname = usePathname();
   const me = useQuery(api.users.viewer);
   const create = useMutation(api.inquiries.create);
@@ -70,6 +81,7 @@ export function ContactPanel({
 
   // Lift the exact location to the page map once it is revealed.
   useEffect(() => {
+    if (contact) onContact?.({ phone: contact.phone, plot: contact.plotNumber });
     if (contact && contact.lat !== null && contact.lng !== null)
       onRevealLocation({ lat: contact.lat, lng: contact.lng, address: contact.exactAddress, plot: contact.plotNumber });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -96,6 +108,16 @@ export function ContactPanel({
           </Button>
         )}
       </div>
+      {contact?.phone && (
+        <div className="grid grid-cols-2 gap-2">
+          <a href={`tel:${contact.phone}`} className={buttonVariants({ className: "w-full" })}>
+            <Phone /> {td("call")}
+          </a>
+          <a href={whatsappHref(contact.phone)} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "outline", className: "w-full" })}>
+            <MessageCircle /> {td("whatsapp")}
+          </a>
+        </div>
+      )}
       {contact?.exactAddress && (
         <p className="rounded-lg bg-secondary px-3 py-2 text-sm">
           <span className="font-medium">{t("address")}:</span> {contact.exactAddress}

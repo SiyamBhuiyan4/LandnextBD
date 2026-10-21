@@ -30,13 +30,6 @@ const SELLERS = [
   { name: "Farzana Rahman", accountType: "owner", verificationStatus: "verified", phone: "+8801700000106", role: "seller" },
 ] as const;
 
-// Public HLS test streams used as placeholder playback for seeded video records.
-const SAMPLE_STREAMS = [
-  "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
-  "https://test-streams.mux.dev/tos_ismc/main.m3u8",
-  "https://test-streams.mux.dev/test_001/stream.m3u8",
-];
-
 function rng(seed: number) {
   let s = seed >>> 0;
   return () => {
@@ -213,35 +206,9 @@ export const run = internalMutation({
       await ctx.db.patch(areaId, { activeCount: (a?.activeCount ?? 0) + 1 });
     }
 
-    // Placeholder video records on roughly a third of the listings.
-    let videos = 0;
-    for (const [i, l] of created.entries()) {
-      if (i % 3 !== 0) continue;
-      const n = i % 2 === 0 ? 2 : 1;
-      for (let k = 0; k < n; k++) {
-        await ctx.db.insert("videos", {
-          listingId: l.id,
-          uploaderId: sellerIds[0],
-          title: k === 0 ? "Site walkthrough" : "Access road and surroundings",
-          status: "ready",
-          moderation: "approved",
-          provider: "seed",
-          hlsUrl: SAMPLE_STREAMS[(i + k) % SAMPLE_STREAMS.length],
-          durationSec: 60 + ((i * 37 + k * 11) % 240),
-          resolutions: ["360p", "720p", "1080p"],
-          areaId: l.areaId,
-          landType: l.landType,
-          price: l.price,
-          listingActive: true,
-          viewCount: (i * 13) % 200,
-          createdAt: now - i * 3600_000 - k * 60_000,
-          readyAt: now - i * 3600_000,
-        });
-        videos++;
-      }
-      await ctx.db.patch(l.id, { hasVideo: true });
-    }
-    return `Seeded ${AREAS.length} areas, ${SELLERS.length} sellers, ${created.length} listings, ${videos} videos.`;
+    // Sample videos are rendered and uploaded through the real media pipeline
+    // (Convex storage -> Telegram) by scripts/seed-videos.mjs (`npm run seed:videos`).
+    return `Seeded ${AREAS.length} areas, ${SELLERS.length} sellers, ${created.length} listings. Run "npm run seed:videos" for sample videos.`;
   },
 });
 

@@ -2,8 +2,8 @@
 
 import { useConvexAuth, useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { motion } from "framer-motion";
-import { BadgeCheck, GitCompareArrows, Heart, MapPin, PlayCircle, Sparkles } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { BadgeCheck, Camera, GitCompareArrows, Heart, MapPin, PlayCircle, Ruler, Sparkles } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -50,7 +50,7 @@ export function SaveButton({ listingId, saved, className }: { listingId: Id<"lis
         }
       }}
       className={cn(
-        "grid size-9 place-items-center rounded-full bg-background/90 text-foreground shadow-sm backdrop-blur transition hover:scale-105 active:scale-95",
+        "grid size-9 place-items-center rounded-full bg-background/90 text-foreground shadow-elev-2 backdrop-blur transition hover:scale-105 active:scale-95",
         className,
       )}
     >
@@ -74,7 +74,7 @@ export function CompareToggle({ id, className }: { id: string; className?: strin
       }}
       className={cn(
         "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium transition",
-        active ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-muted",
+        active ? "border-primary bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground",
         className,
       )}
     >
@@ -100,6 +100,8 @@ export function ListingCard({
   const ts = useTranslations("sellerType");
   const tc = useTranslations("common");
   const tst = useTranslations("status");
+  const tli = useTranslations("listing");
+  const reduce = useReducedMotion();
   const Icon = LandTypeIcons[l.landType];
   const href = listingHref(l);
   const list = layout === "list";
@@ -109,95 +111,102 @@ export function ListingCard({
       initial={{ opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.35, ease: "easeOut" }}
+      transition={reduce ? { duration: 0 } : { duration: 0.35, ease: "easeOut" }}
       className={cn(
-        "group relative overflow-hidden rounded-2xl border bg-card shadow-soft transition-shadow hover:shadow-lg focus-within:ring-2 focus-within:ring-ring",
-        list && "flex flex-col sm:flex-row",
+        "group elev-hover relative flex overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-elev-1 hover:border-primary/30 focus-within:ring-2 focus-within:ring-ring",
+        list ? "flex-col sm:flex-row" : "flex-col",
       )}
     >
-      <div className={cn("relative aspect-[4/3] overflow-hidden bg-muted", list && "sm:aspect-auto sm:w-72 sm:shrink-0")}>
+      <div className={cn("relative aspect-[4/3] shrink-0 overflow-hidden bg-muted", list && "sm:aspect-auto sm:min-h-52 sm:w-80")}>
         {l.coverUrl ? (
           <Image
             src={l.coverUrl}
             alt={l.title}
             fill
-            sizes={list ? "(min-width: 640px) 288px, 100vw" : "(min-width: 1280px) 25vw, (min-width: 768px) 33vw, (min-width: 640px) 50vw, 100vw"}
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            sizes={list ? "(min-width: 640px) 320px, 100vw" : "(min-width: 1280px) 25vw, (min-width: 768px) 33vw, (min-width: 640px) 50vw, 100vw"}
+            className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
             placeholder="blur"
             blurDataURL={BLUR}
             priority={priority}
           />
         ) : (
-          <div className="grid h-full place-items-center text-muted-foreground">
+          <div className="grid h-full place-items-center bg-surface-2 text-muted-foreground">
             <Icon size={48} />
           </div>
         )}
-        <div className="absolute inset-x-0 top-0 flex items-start justify-between p-2.5">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/45 to-transparent" aria-hidden />
+        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2.5">
           <div className="flex flex-wrap gap-1.5">
             {l.isFeatured && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-warm px-2 py-0.5 text-[11px] font-semibold text-warm-foreground">
-                <Sparkles className="size-3" /> {tc("featured")}
+              <span className="inline-flex items-center gap-1 rounded-full bg-warm px-2 py-0.5 text-[11px] font-semibold text-warm-foreground shadow-elev-1">
+                <Sparkles className="size-3" aria-hidden /> {tc("featured")}
               </span>
             )}
             {l.isVerified && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">
-                <BadgeCheck className="size-3" /> {tc("verified")}
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground shadow-elev-1">
+                <BadgeCheck className="size-3" aria-hidden /> {tc("verified")}
               </span>
             )}
             {l.status === "sold" && <span className="rounded-full bg-foreground px-2 py-0.5 text-[11px] font-semibold text-background">{tst("sold")}</span>}
           </div>
-          <SaveButton listingId={l._id} saved={saved} />
+          <SaveButton listingId={l._id} saved={saved} className="relative z-10" />
         </div>
-        {l.hasVideo && (
-          <span className="absolute bottom-2.5 left-2.5 inline-flex items-center gap-1 rounded-full bg-black/65 px-2 py-0.5 text-[11px] font-medium text-white">
-            <PlayCircle className="size-3.5" /> {tc("hasVideo")}
-          </span>
-        )}
-        {l.imageCount > 1 && (
-          <span className="absolute right-2.5 bottom-2.5 rounded-full bg-black/55 px-2 py-0.5 text-[11px] text-white">
-            {tc("photos", { count: fmt.digits(l.imageCount) })}
-          </span>
-        )}
+        <div className="absolute inset-x-2.5 bottom-2.5 flex items-center justify-between gap-2 text-[11px] font-medium text-white">
+          {l.hasVideo ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-badge-video px-2 py-0.5 backdrop-blur-sm">
+              <PlayCircle className="size-3.5" aria-hidden /> {tc("hasVideo")}
+            </span>
+          ) : (
+            <span />
+          )}
+          {l.imageCount > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-badge-video px-2 py-0.5 backdrop-blur-sm">
+              <Camera className="size-3.5" aria-hidden /> {fmt.digits(l.imageCount)}
+              <span className="sr-only">{tc("photos", { count: fmt.digits(l.imageCount) })}</span>
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
-          <Icon size={15} /> {tl(l.landType)}
-          <span className="text-muted-foreground">· {ts(l.sellerType)}</span>
+      <div className={cn("flex flex-1 flex-col p-4", list && "sm:p-5")}>
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="font-heading text-xl leading-tight font-extrabold tracking-tight text-price">{fmt.price(l.price)}</p>
+          {l.negotiable && <span className="shrink-0 text-[11px] font-medium text-muted-foreground">{tc("negotiable")}</span>}
         </div>
-        <h3 className="line-clamp-2 font-heading text-[15px] leading-snug font-semibold">
-          <Link href={href} className="after:absolute after:inset-0 focus:outline-none">
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {fmt.perUnit(l.price, l.sizeSqft, "katha")} / {fmt.locale === "bn" ? "কাঠা" : "katha"}
+        </p>
+        <h3 className={cn("mt-2.5 line-clamp-2 font-heading text-[15px] leading-snug font-semibold", list && "sm:text-base")}>
+          <Link href={href} className="after:absolute after:inset-0 after:z-0 focus:outline-none">
             {l.title}
           </Link>
         </h3>
-        <p className="flex items-center gap-1 text-sm text-muted-foreground">
-          <MapPin className="size-3.5 shrink-0" /> {l.areaName}, {l.district}
+        <p className="mt-1.5 flex items-center gap-1 text-sm text-muted-foreground">
+          <MapPin className="size-3.5 shrink-0 text-primary" aria-hidden /> <span className="truncate">{l.areaName}, {l.district}</span>
         </p>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">{fmt.size(l.sizeValue, l.sizeUnit)}</span>
+        <div className="mt-3 mb-3.5 flex flex-wrap items-center gap-1.5 text-xs">
+          <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 font-medium text-secondary-foreground">
+            <Icon size={13} /> {tl(l.landType)}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-semibold">
+            <Ruler className="size-3" aria-hidden /> {fmt.size(l.sizeValue, l.sizeUnit)}
+          </span>
           {l.facing && (
-            <span className="inline-flex items-center gap-1">
-              <CompassIcon size={14} /> {tf(l.facing)}
+            <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-muted-foreground">
+              <CompassIcon size={13} /> {tf(l.facing)}
             </span>
           )}
           {l.roadWidthFt && (
-            <span className="inline-flex items-center gap-1">
-              <RoadIcon size={14} /> {fmt.digits(l.roadWidthFt)} ft
+            <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-muted-foreground">
+              <RoadIcon size={13} /> {fmt.digits(l.roadWidthFt)} ft
             </span>
           )}
         </div>
-        <div className="mt-auto flex items-end justify-between gap-2 pt-2">
-          <div>
-            <p className="font-heading text-lg font-bold text-foreground">{fmt.price(l.price)}</p>
-            <p className="text-[11px] text-muted-foreground">
-              {fmt.perUnit(l.price, l.sizeSqft, "katha")}/{fmt.locale === "bn" ? "কাঠা" : "katha"}
-              {l.negotiable ? ` · ${tc("negotiable")}` : ""}
-            </p>
-          </div>
-          <div className="relative z-10 flex flex-col items-end gap-1.5">
-            <CompareToggle id={l._id} />
-            <span className="text-[11px] text-muted-foreground">{fmt.ago(l.publishedAt)}</span>
-          </div>
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-dashed pt-3">
+          <span className="min-w-0 truncate text-[11px] text-muted-foreground">
+            {tli("postedAgo", { time: fmt.ago(l.publishedAt) })} · {ts(l.sellerType)}
+          </span>
+          <CompareToggle id={l._id} className="relative z-10 shrink-0" />
         </div>
       </div>
     </motion.article>
@@ -206,13 +215,19 @@ export function ListingCard({
 
 export function ListingCardSkeleton({ layout = "grid" }: { layout?: "grid" | "list" }) {
   return (
-    <div className={cn("overflow-hidden rounded-2xl border bg-card", layout === "list" && "flex")} aria-hidden>
-      <div className={cn("aspect-[4/3] animate-pulse bg-muted", layout === "list" && "w-72 shrink-0")} />
+    <div className={cn("overflow-hidden rounded-2xl border bg-card shadow-elev-1", layout === "list" && "flex flex-col sm:flex-row")} aria-hidden>
+      <div className={cn("aspect-[4/3] animate-pulse bg-muted", layout === "list" && "sm:aspect-auto sm:min-h-52 sm:w-80 sm:shrink-0")} />
       <div className="flex-1 space-y-3 p-4">
-        <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+        <div className="h-6 w-32 animate-pulse rounded-md bg-muted" />
+        <div className="h-3 w-20 animate-pulse rounded bg-muted" />
         <div className="h-4 w-full animate-pulse rounded bg-muted" />
         <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
-        <div className="h-5 w-28 animate-pulse rounded bg-muted" />
+        <div className="flex gap-1.5">
+          <div className="h-5 w-20 animate-pulse rounded-full bg-muted" />
+          <div className="h-5 w-16 animate-pulse rounded-full bg-muted" />
+        </div>
+        <div className="h-px w-full bg-border" />
+        <div className="h-6 w-full animate-pulse rounded bg-muted" />
       </div>
     </div>
   );

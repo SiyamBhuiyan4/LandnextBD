@@ -49,12 +49,12 @@ export function writeLocal(key: string, value: unknown) {
   }
 }
 
-/** Upload a file straight to Convex storage via a signed URL, with progress. */
-export function uploadWithProgress(url: string, file: File, onProgress: (pct: number) => void): Promise<string> {
+/** Upload a file (or a slice of one) straight to Convex storage via a signed URL, with progress. */
+export function uploadWithProgress(url: string, file: Blob, onProgress: (pct: number) => void, contentType?: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", url);
-    xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+    xhr.setRequestHeader("Content-Type", contentType || file.type || "application/octet-stream");
     xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(Math.round((e.loaded / e.total) * 100));
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
@@ -71,15 +71,53 @@ export function uploadWithProgress(url: string, file: File, onProgress: (pct: nu
 }
 
 /** Reads a video's duration in the browser before upload. */
-export function videoDuration(file: File): Promise<number | undefined> {
+export async function videoDuration(file: File): Promise<number | undefined> {
+  return (await videoInfo(file, false)).durationSec;
+}
+
+/**
+ * Reads a video's duration and (optionally) grabs a poster frame as a small
+ * JPEG, entirely in the browser. Either may be undefined when the browser
+ * cannot decode the file (e.g. some .mov codecs).
+ */
+export function videoInfo(file: File, withPoster = true): Promise<{ durationSec?: number; poster?: Blob }> {
   return new Promise((resolve) => {
     const el = document.createElement("video");
-    el.preload = "metadata";
-    el.onloadedmetadata = () => {
-      URL.revokeObjectURL(el.src);
-      resolve(Number.isFinite(el.duration) ? el.duration : undefined);
+    const src = URL.createObjectURL(file);
+    let durationSec: number | undefined;
+    let settled = false;
+    const finish = (poster?: Blob) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      el.removeAttribute("src");
+      el.load();
+      URL.revokeObjectURL(src);
+      resolve({ durationSec, poster });
     };
-    el.onerror = () => resolve(undefined);
-    el.src = URL.createObjectURL(file);
+    const timer = setTimeout(() => finish(), 10_000);
+    el.preload = "metadata";
+    el.muted = true;
+    el.playsInline = true;
+    el.onloadedmetadata = () => {
+      durationSec = Number.isFinite(el.duration) ? el.duration : undefined;
+      if (!withPoster) return finish();
+      el.currentTime = Math.min(1, (durationSec ?? 0) / 2);
+    };
+    el.onseeked = () => {
+      if (!el.videoWidth || !el.videoHeight) return finish();
+      try {
+        const scale = Math.min(1, 640 / Math.max(el.videoWidth, el.videoHeight));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(el.videoWidth * scale));
+        canvas.height = Math.max(1, Math.round(el.videoHeight * scale));
+        canvas.getContext("2d")!.drawImage(el, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((b) => finish(b && b.size > 0 ? b : undefined), "image/jpeg", 0.8);
+      } catch {
+        finish();
+      }
+    };
+    el.onerror = () => finish();
+    el.src = src;
   });
 }

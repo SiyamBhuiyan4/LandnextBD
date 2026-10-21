@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -58,13 +58,12 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     { href: "/dashboard", label: t("overview") },
     { href: "/dashboard/listings", label: t("myListings") },
     { href: "/dashboard/inquiries", label: t("inbox") },
-    { href: "/dashboard/listings/new", label: t("newListing") },
   ];
   return (
     <div className="container-page py-6">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-bold">{t("title")}</h1>
-        <nav className="scrollbar-none -mx-4 flex gap-1 overflow-x-auto px-4" aria-label={t("title")}>
+        <nav className="scrollbar-none -mx-4 flex items-center gap-1 overflow-x-auto px-4" aria-label={t("title")}>
           {nav.map((n) => (
             <Link
               key={n.href}
@@ -77,6 +76,15 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               {n.label}
             </Link>
           ))}
+          <Link
+            href="/dashboard/listings/new"
+            className={cn(
+              "ml-1 inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition",
+              pathname === "/dashboard/listings/new" ? "bg-primary text-primary-foreground" : "bg-warm text-warm-foreground hover:bg-warm/90",
+            )}
+          >
+            <Plus className="size-4" /> {t("postLand")}
+          </Link>
         </nav>
       </div>
       {children}

@@ -76,6 +76,8 @@ export const registerUpload = mutation({
       throw new ConvexError({ code: "INVALID", message: `At most ${CONFIG.maxVideosPerListing} videos per listing.` });
     }
     await ctx.db.patch(mediaId, { attached: true });
+    const thumb = media.thumbMediaId ? await ctx.db.get(media.thumbMediaId) : null;
+    if (thumb) await ctx.db.patch(thumb._id, { attached: true });
     const id = await ctx.db.insert("videos", {
       listingId,
       uploaderId: user._id,
@@ -320,7 +322,8 @@ export const markReady = internalMutation({
     if (!vid) return null;
     await ctx.db.patch(vid._id, {
       status: "ready",
-      thumbMediaId: a.thumbMediaId ?? vid.thumbMediaId,
+      // Keep a poster we already have (browser-captured frame); Telegram's auto thumbnail is only a fallback.
+      thumbMediaId: vid.thumbMediaId ?? a.thumbMediaId,
       durationSec: a.durationSec ?? vid.durationSec,
       resolutions: a.resolutions ?? vid.resolutions,
       errorMessage: undefined,

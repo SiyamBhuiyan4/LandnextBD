@@ -281,6 +281,25 @@ export default defineSchema({
     tgMessageId: v.optional(v.number()),
     tgFilePath: v.optional(v.string()),
     tgFilePathAt: v.optional(v.number()),
+    // Files bigger than CONFIG.telegramChunkBytes (big videos) are stored as
+    // ordered parts; the single-file fields above stay empty for those rows.
+    parts: v.optional(
+      v.array(
+        v.object({
+          storageId: v.optional(v.id("_storage")),
+          size: v.number(),
+          tgFileId: v.optional(v.string()),
+          tgFileUniqueId: v.optional(v.string()),
+          tgMessageId: v.optional(v.number()),
+          tgFilePath: v.optional(v.string()),
+          tgFilePathAt: v.optional(v.number()),
+        }),
+      ),
+    ),
+    // set while a part is being sent to Telegram, so only one push chain runs per file
+    pushLeaseAt: v.optional(v.number()),
+    // poster frame captured in the browser (kind "thumbnail")
+    thumbMediaId: v.optional(v.id("media")),
     mimeType: v.string(),
     size: v.number(),
     fileName: v.optional(v.string()),
@@ -292,5 +311,6 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_attached", ["attached", "createdAt"])
-    .index("by_status", ["status", "createdAt"]),
+    .index("by_status", ["status", "createdAt"])
+    .index("by_storage", ["storageId"]),
 });

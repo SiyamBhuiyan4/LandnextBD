@@ -1,10 +1,9 @@
 "use client";
 
-import { useQuery } from "convex/react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { api } from "@/convex/_generated/api";
 import { FacilityIcon, LandTypeIcons, UtilityIcons } from "@/components/icons";
+import { LocationPicker } from "@/components/search/location-picker";
 import { Slider } from "@/components/ui/slider";
 import { useFmt } from "@/hooks/use-fmt";
 import { FACILITIES, FACINGS, LAND_TYPES, PRICE_SLIDER_MAX, SIZE_SLIDER_MAX_KATHA, UTILITIES } from "@/lib/constants";
@@ -16,8 +15,8 @@ const selectCls = "h-10 w-full rounded-lg border bg-background px-3 text-sm outl
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <fieldset className="border-b py-4 first:pt-0 last:border-0">
-      <legend className="mb-2.5 text-sm font-semibold">{title}</legend>
+    <fieldset className="border-b border-dashed py-4 first:pt-0 last:border-0">
+      <legend className="mb-2.5 font-heading text-[13px] font-bold tracking-wide">{title}</legend>
       {children}
     </fieldset>
   );
@@ -31,7 +30,7 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
       onClick={onClick}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition",
-        active ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:border-primary/40",
+        active ? "border-primary bg-primary text-primary-foreground shadow-elev-1" : "bg-background hover:border-primary/40 hover:bg-secondary/60",
       )}
     >
       {children}
@@ -106,59 +105,13 @@ export function FilterPanel({
   const tfa = useTranslations("facilities");
   const fmt = useFmt();
   const locale = useLocale();
-  const tree = useQuery(api.areas.hierarchy);
-
-  const division = tree?.find((d) => d.name === filters.division);
-  const districts = division ? division.districts : (tree ?? []).flatMap((d) => d.districts);
-  const district = districts.find((d) => d.name === filters.district);
-  const areas = district ? district.areas : districts.flatMap((d) => d.areas);
-
   const toggleIn = <T extends string>(arr: T[] | undefined, v: T) => (arr?.includes(v) ? arr.filter((x) => x !== v) : [...(arr ?? []), v]);
 
   return (
     <div className="text-sm">
       {!lockArea && (
         <Group title={t("location")}>
-          <div className="space-y-2">
-            <select
-              aria-label={t("division")}
-              className={selectCls}
-              value={filters.division ?? ""}
-              onChange={(e) => set({ division: e.target.value || undefined, district: undefined, area: undefined })}
-            >
-              <option value="">{t("allBangladesh")}</option>
-              {tree?.map((d) => (
-                <option key={d.name} value={d.name}>
-                  {d.name} ({fmt.digits(d.count)})
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label={t("district")}
-              className={selectCls}
-              value={filters.district ?? ""}
-              onChange={(e) => set({ district: e.target.value || undefined, area: undefined })}
-            >
-              <option value="">
-                {t("district")}: {t("allBangladesh")}
-              </option>
-              {districts.map((d) => (
-                <option key={d.name} value={d.name}>
-                  {d.name} ({fmt.digits(d.count)})
-                </option>
-              ))}
-            </select>
-            <select aria-label={t("area")} className={selectCls} value={filters.area ?? ""} onChange={(e) => set({ area: e.target.value || undefined })}>
-              <option value="">
-                {t("area")}: {t("allBangladesh")}
-              </option>
-              {areas.map((a) => (
-                <option key={a._id} value={a.slug}>
-                  {locale === "bn" && a.areaNameBn ? a.areaNameBn : a.areaName} ({fmt.digits(a.activeCount)})
-                </option>
-              ))}
-            </select>
-          </div>
+          <LocationPicker value={{ division: filters.division, district: filters.district, area: filters.area }} onChange={(v) => set(v)} />
         </Group>
       )}
 

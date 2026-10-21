@@ -6,6 +6,7 @@ import {
   PopularAreas,
   SellCta,
   StatsStrip,
+  TrustSection,
   VerifiedSellers,
   VideosStrip,
 } from "@/components/home/home-sections";
@@ -17,9 +18,10 @@ export default function HomePage() {
       <StatsStrip />
       <Categories />
       <FeaturedCarousel />
-      <NewestGrid />
-      <VideosStrip />
       <PopularAreas />
+      <NewestGrid />
+      <TrustSection />
+      <VideosStrip />
       <VerifiedSellers />
       <SellCta />
     </>

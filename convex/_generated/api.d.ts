@@ -21,6 +21,7 @@ import type * as media from "../media.js";
 import type * as meta from "../meta.js";
 import type * as notify from "../notify.js";
 import type * as reports from "../reports.js";
+import type * as sampleVideos from "../sampleVideos.js";
 import type * as savedSearches from "../savedSearches.js";
 import type * as saves from "../saves.js";
 import type * as seed from "../seed.js";
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   meta: typeof meta;
   notify: typeof notify;
   reports: typeof reports;
+  sampleVideos: typeof sampleVideos;
   savedSearches: typeof savedSearches;
   saves: typeof saves;
   seed: typeof seed;

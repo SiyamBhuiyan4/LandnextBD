@@ -2,7 +2,7 @@
 
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useMutation, useQuery } from "convex/react";
-import { Bell, Heart, LayoutDashboard, LogOut, Menu, MessageSquare, Moon, Plus, Shield, Sun, User, Video } from "lucide-react";
+import { Bell, GitCompareArrows, Heart, LayoutDashboard, LogOut, Menu, MessageSquare, Moon, Plus, Search, Shield, Sun, User, Video } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -161,6 +161,13 @@ function UserMenu() {
   );
 }
 
+const MOBILE_NAV = [
+  { href: "/browse", key: "browse", Icon: Search },
+  { href: "/videos", key: "videos", Icon: Video },
+  { href: "/compare", key: "compare", Icon: GitCompareArrows },
+  { href: "/saved", key: "saved", Icon: Heart },
+] as const;
+
 const NAV = [
   { href: "/browse", key: "browse" },
   { href: "/videos", key: "videos" },
@@ -174,7 +181,7 @@ export function Header() {
   useEffect(() => setOpen(false), [pathname]);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-lg">
+    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 shadow-elev-1 backdrop-blur-xl backdrop-saturate-150">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-2 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-foreground">
         {t("skipToContent")}
       </a>
@@ -189,8 +196,8 @@ export function Header() {
               key={n.href}
               href={n.href}
               className={cn(
-                "rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-                pathname.startsWith(n.href) && "bg-secondary text-secondary-foreground",
+                "rounded-full px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                pathname.startsWith(n.href) && "bg-secondary font-semibold text-secondary-foreground",
               )}
             >
               {t(n.key)}
@@ -198,7 +205,7 @@ export function Header() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-1">
-          <Link href="/dashboard/listings/new" className={cn(buttonVariants({ size: "sm" }), "hidden gap-1 bg-warm text-warm-foreground hover:bg-warm/90 sm:inline-flex")}>
+          <Link href="/dashboard/listings/new" className={cn(buttonVariants({ size: "sm" }), "mr-1 hidden gap-1 rounded-full bg-warm px-3.5 font-semibold text-warm-foreground shadow-elev-1 hover:bg-warm/90 sm:inline-flex")}>
             <Plus /> {t("postAd")}
           </Link>
           <LanguageToggle className="hidden sm:inline-flex" />
@@ -210,27 +217,38 @@ export function Header() {
             <SheetTrigger className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "md:hidden")} aria-label={t("menu")}>
               <Menu />
             </SheetTrigger>
-            <SheetContent side="right" className="w-72 p-0">
-              <SheetTitle className="border-b px-4 py-4">{t("menu")}</SheetTitle>
-              <nav className="flex flex-col p-2" aria-label="Mobile">
-                {NAV.map((n) => (
-                  <Link key={n.href} href={n.href} className="rounded-lg px-3 py-3 font-medium hover:bg-muted">
-                    {t(n.key)}
+            <SheetContent side="right" className="flex w-80 max-w-[85vw] flex-col p-0">
+              <SheetTitle className="flex items-center gap-2 border-b px-4 py-4 font-heading">
+                <LogoMark size={26} /> <Wordmark />
+                <span className="sr-only">{t("menu")}</span>
+              </SheetTitle>
+              <nav className="flex flex-col gap-0.5 p-2" aria-label="Mobile">
+                {MOBILE_NAV.map(({ href, key, Icon }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    aria-current={pathname.startsWith(href) ? "page" : undefined}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl px-3 py-3 font-medium hover:bg-muted",
+                      pathname.startsWith(href) && "bg-secondary font-semibold text-secondary-foreground",
+                    )}
+                  >
+                    <Icon className="size-4.5 text-primary" aria-hidden /> {t(key)}
                   </Link>
                 ))}
-                <Link href="/saved" className="rounded-lg px-3 py-3 font-medium hover:bg-muted">
-                  {t("saved")}
-                </Link>
-                <Link href="/dashboard/listings/new" className="mt-2 flex items-center gap-2 rounded-lg bg-warm px-3 py-3 font-semibold text-warm-foreground">
+                <Link href="/dashboard/listings/new" className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-warm px-3 py-3 font-semibold text-warm-foreground shadow-elev-1">
                   <Plus className="size-4" /> {t("postAd")}
                 </Link>
-                <Link href="/videos" className="flex items-center gap-2 rounded-lg px-3 py-3 font-medium hover:bg-muted sm:hidden">
-                  <Video className="size-4" /> {t("videos")}
-                </Link>
               </nav>
-              <div className="mt-auto flex items-center gap-2 border-t p-3">
-                <LanguageToggle />
-                <ThemeToggle />
+              <div className="mt-auto grid grid-cols-2 gap-2 border-t p-3">
+                <div className="flex flex-col items-start gap-1 rounded-xl bg-muted/60 p-2">
+                  <span className="px-1 text-[11px] font-semibold text-muted-foreground uppercase">{t("language")}</span>
+                  <LanguageToggle />
+                </div>
+                <div className="flex flex-col items-start gap-1 rounded-xl bg-muted/60 p-2">
+                  <span className="px-1 text-[11px] font-semibold text-muted-foreground uppercase">{t("theme")}</span>
+                  <ThemeToggle />
+                </div>
               </div>
             </SheetContent>
           </Sheet>

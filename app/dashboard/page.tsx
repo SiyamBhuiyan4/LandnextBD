@@ -1,21 +1,58 @@
 "use client";
 
 import { useQuery } from "convex/react";
+import { ArrowRight, Pencil, Plus } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import { BarList, StatTile, TimeSeriesChart } from "@/components/dashboard/charts";
+import { PostLandEmpty } from "@/components/dashboard/post-land-empty";
+import { StatusChip } from "@/components/dashboard/status-chip";
+import { buttonVariants } from "@/components/ui/button";
 import { useFmt } from "@/hooks/use-fmt";
 import { listingHref } from "@/lib/urls";
+import { cn } from "@/lib/utils";
 
 export default function DashboardOverview() {
   const t = useTranslations("dashboard");
   const fmt = useFmt();
   const a = useQuery(api.dashboard.analytics, { days: 30 });
-  if (!a) return <div className="h-96 animate-pulse rounded-2xl bg-muted" />;
+  const mine = useQuery(api.listings.mine);
+  if (!a || mine === undefined) return <div className="h-96 animate-pulse rounded-2xl bg-muted" />;
+  if (mine.length === 0) return <PostLandEmpty />;
   const mins = (s: number) => `${fmt.digits(Math.round(s / 60))}m`;
+  const todo = mine.filter((l) => l.status === "draft" || l.status === "rejected" || l.status === "expired").slice(0, 3);
   return (
     <div className="space-y-6">
+      <div className="flex flex-col gap-4 rounded-3xl border bg-card p-5 shadow-soft sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div>
+          <h2 className="font-heading text-xl font-bold">{t("heroTitle")}</h2>
+          <p className="text-sm text-muted-foreground">{t("heroBody")}</p>
+        </div>
+        <Link href="/dashboard/listings/new" className={cn(buttonVariants({ size: "lg" }), "h-12 rounded-xl px-6 text-base font-semibold")}>
+          <Plus className="size-5" /> {t("postLand")}
+        </Link>
+      </div>
+      {todo.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="font-heading text-lg font-semibold">{t("needsAttention")}</h2>
+          <ul className="grid gap-2 md:grid-cols-3">
+            {todo.map((l) => (
+              <li key={l._id}>
+                <Link href={l.status === "expired" ? "/dashboard/listings" : `/dashboard/listings/${l._id}/edit`} className="flex items-center gap-3 rounded-2xl border bg-card p-3 transition hover:border-primary/50">
+                  <div className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-muted">{l.coverUrl && <Image src={l.coverUrl} alt="" fill sizes="56px" className="object-cover" />}</div>
+                  <div className="min-w-0 flex-1">
+                    <StatusChip status={l.status} />
+                    <p className="mt-0.5 truncate text-sm font-medium">{l.title}</p>
+                  </div>
+                  {l.status === "expired" ? <ArrowRight className="size-4 text-muted-foreground" /> : <Pencil className="size-4 text-muted-foreground" />}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <StatTile label={t("active")} value={fmt.digits(a.counts.active)} />
         <StatTile label={t("pending")} value={fmt.digits(a.counts.pending)} />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { BadgeCheck, Check, Minus, X } from "lucide-react";
+import { BadgeCheck, Check, GitCompareArrows, Minus, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -10,10 +10,11 @@ import { Suspense } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useCompare } from "@/components/providers";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { useFmt } from "@/hooks/use-fmt";
 import { pricePerUnit } from "@/lib/units";
 import { listingHref } from "@/lib/urls";
+import { cn } from "@/lib/utils";
 
 function CompareInner() {
   const t = useTranslations("compare");
@@ -23,6 +24,7 @@ function CompareInner() {
   const tfa = useTranslations("facilities");
   const ts = useTranslations("sellerType");
   const tls = useTranslations("landStatus");
+  const tc = useTranslations("common");
   const fmt = useFmt();
   const sp = useSearchParams();
   const { ids: stored, toggle, clear } = useCompare();
@@ -30,7 +32,17 @@ function CompareInner() {
   const rows = useQuery(api.listings.getMany, ids.length ? { ids } : "skip");
 
   if (!ids.length || rows?.length === 0)
-    return <p className="mt-8 rounded-2xl border border-dashed p-10 text-center text-muted-foreground">{t("empty")}</p>;
+    return (
+      <div className="mt-8 grid place-items-center rounded-3xl border border-dashed bg-surface px-6 py-16 text-center">
+        <span className="grid size-16 place-items-center rounded-2xl bg-card text-primary shadow-elev-1">
+          <GitCompareArrows className="size-8" aria-hidden />
+        </span>
+        <p className="mt-4 max-w-sm text-muted-foreground">{t("empty")}</p>
+        <Link href="/browse" className={cn(buttonVariants({ size: "lg" }), "mt-6 h-11 rounded-xl")}>
+          {tc("browse")}
+        </Link>
+      </div>
+    );
   if (!rows) return <div className="mt-8 h-96 animate-pulse rounded-2xl bg-muted" />;
 
   const cheapestPerKatha = Math.min(...rows.map((r) => pricePerUnit(r.price, r.sizeSqft, "katha")));
@@ -58,10 +70,10 @@ function CompareInner() {
   ];
 
   return (
-    <div className="mt-6 overflow-x-auto rounded-2xl border bg-card shadow-soft">
+    <div className="mt-6 overflow-x-auto rounded-2xl border bg-card shadow-elev-2">
       <table className="w-full min-w-[640px] table-fixed text-sm">
         <thead>
-          <tr className="border-b">
+          <tr className="border-b bg-surface">
             <th className="w-36 p-3" scope="col">
               <Button variant="ghost" size="sm" onClick={clear}>
                 {t("clear")}
@@ -106,7 +118,7 @@ export default function ComparePage() {
   const t = useTranslations("compare");
   return (
     <div className="container-page py-8">
-      <h1 className="font-heading text-2xl font-bold">{t("title")}</h1>
+      <h1 className="font-heading text-2xl font-extrabold tracking-tight sm:text-3xl">{t("title")}</h1>
       <Suspense>
         <CompareInner />
       </Suspense>

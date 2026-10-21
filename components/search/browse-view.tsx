@@ -1,10 +1,10 @@
 "use client";
 
 import { useConvexAuth, useMutation, usePaginatedQuery, useQuery } from "convex/react";
-import { BellPlus, LayoutGrid, List, Map as MapIcon, SearchX, SlidersHorizontal, X } from "lucide-react";
+import { ArrowUpDown, BellPlus, ChevronDown, LayoutGrid, List, Loader2, Map as MapIcon, Search, SearchX, SlidersHorizontal, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
@@ -17,6 +17,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { useFmt } from "@/hooks/use-fmt";
 import { errorMessage, readLocal, writeLocal } from "@/lib/client";
 import { SORTS, type LandType, type ListingFilters } from "@/lib/constants";
+import { fromSqft } from "@/lib/units";
 import { countActiveFilters, filtersFromSearchParams, filtersToSearchParams, type BrowseFilters } from "@/lib/urls";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +27,53 @@ const MapView = dynamic(() => import("@/components/search/map-view"), {
 });
 
 type Layout = "grid" | "list" | "map";
+const LAYOUTS = [
+  ["grid", LayoutGrid],
+  ["list", List],
+  ["map", MapIcon],
+] as const;
+
+type Chip = { key: string; label: string; remove: () => void };
+
+/** Human-readable, individually removable chips for every active URL filter. */
+function useActiveChips(
+  f: BrowseFilters,
+  set: (patch: Partial<BrowseFilters>) => void,
+  opts: { lockArea: boolean; lockType: boolean; areaLabel?: string },
+): Chip[] {
+  const t = useTranslations("browse");
+  const tl = useTranslations("landType");
+  const tf = useTranslations("facing");
+  const tu = useTranslations("utilities");
+  const tfa = useTranslations("facilities");
+  const fmt = useFmt();
+  const katha = fmt.locale === "bn" ? "কাঠা" : "katha";
+  const range = (min: number | undefined, max: number | undefined, show: (n: number) => string) =>
+    min && max ? `${show(min)} – ${show(max)}` : min ? `${show(min)}+` : `≤ ${show(max ?? 0)}`;
+  const chips: Chip[] = [];
+  if (f.q) chips.push({ key: "q", label: `“${f.q}”`, remove: () => set({ q: undefined }) });
+  if (!opts.lockArea) {
+    if (f.area) chips.push({ key: "area", label: opts.areaLabel ?? f.area, remove: () => set({ area: undefined }) });
+    if (f.district) chips.push({ key: "district", label: f.district, remove: () => set({ district: undefined, area: undefined }) });
+    if (f.division) chips.push({ key: "division", label: f.division, remove: () => set({ division: undefined, district: undefined, area: undefined }) });
+  }
+  if (f.landType && !opts.lockType) chips.push({ key: "landType", label: tl(f.landType), remove: () => set({ landType: undefined }) });
+  if (f.minPrice || f.maxPrice) chips.push({ key: "price", label: range(f.minPrice, f.maxPrice, (n) => fmt.price(n, false)), remove: () => set({ minPrice: undefined, maxPrice: undefined }) });
+  if (f.minSqft || f.maxSqft)
+    chips.push({
+      key: "size",
+      label: `${range(f.minSqft, f.maxSqft, (n) => fmt.digits(Math.round(fromSqft(n, "katha"))))} ${katha}`,
+      remove: () => set({ minSqft: undefined, maxSqft: undefined }),
+    });
+  if (f.facing) chips.push({ key: "facing", label: tf(f.facing), remove: () => set({ facing: undefined }) });
+  if (f.minRoadWidth) chips.push({ key: "road", label: `${t("roadWidth")}: ${t("feet", { n: fmt.digits(f.minRoadWidth) })}`, remove: () => set({ minRoadWidth: undefined }) });
+  if (f.verifiedOnly) chips.push({ key: "verified", label: t("verifiedOnly"), remove: () => set({ verifiedOnly: undefined }) });
+  if (f.hasVideo) chips.push({ key: "video", label: t("hasVideo"), remove: () => set({ hasVideo: undefined }) });
+  if (f.negotiable) chips.push({ key: "neg", label: t("negotiable"), remove: () => set({ negotiable: undefined }) });
+  for (const u of f.utilities ?? []) chips.push({ key: `u-${u}`, label: tu(u), remove: () => set({ utilities: f.utilities?.filter((x) => x !== u) }) });
+  for (const x of f.facilities ?? []) chips.push({ key: `f-${x}`, label: tfa(x), remove: () => set({ facilities: f.facilities?.filter((y) => y !== x) }) });
+  return chips;
+}
 
 export function BrowseView({
   fixedArea,
@@ -42,6 +90,7 @@ export function BrowseView({
   const ts = useTranslations("sort");
   const tc = useTranslations("common");
   const fmt = useFmt();
+  const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
@@ -94,110 +143,170 @@ export function BrowseView({
   }, [status, loadMore, layout]);
 
   const active = countActiveFilters(urlFilters);
+  const chips = useActiveChips(urlFilters, set, { lockArea: !!fixedArea, lockType: !!fixedType, areaLabel: areas?.find((a) => a.slug === urlFilters.area)?.[locale === "bn" ? "areaNameBn" : "areaName"] ?? areas?.find((a) => a.slug === urlFilters.area)?.areaName });
+  const firstLoad = status === "LoadingFirstPage" && rows.length === 0;
+
+  const suggestions: { label: string; patch: Partial<BrowseFilters> }[] = [];
+  if (!fixedArea && (urlFilters.area || urlFilters.district || urlFilters.division)) suggestions.push({ label: t("suggestAllAreas"), patch: { area: undefined, district: undefined, division: undefined } });
+  if (urlFilters.minPrice || urlFilters.maxPrice) suggestions.push({ label: t("suggestNoPrice"), patch: { minPrice: undefined, maxPrice: undefined } });
+  if (urlFilters.minSqft || urlFilters.maxSqft) suggestions.push({ label: t("suggestNoSize"), patch: { minSqft: undefined, maxSqft: undefined } });
+  if (!fixedType && urlFilters.landType) suggestions.push({ label: t("suggestNoType"), patch: { landType: undefined } });
+
+  const controlCls = "h-10 rounded-xl border bg-background text-sm outline-none transition-colors hover:border-primary/40 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40";
 
   return (
-    <div className="container-page py-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
-          <p className="mt-1 text-sm text-muted-foreground" aria-live="polite">
-            {status === "LoadingFirstPage" && !initialPage ? tc("loading") : t("results", { count: rows.length })}
-            {status === "CanLoadMore" ? "+" : ""}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="container-page pt-6 pb-10">
+      <div>
+        <h1 className="font-heading text-2xl font-extrabold tracking-tight sm:text-3xl">{title}</h1>
+        <p className="mt-1 text-sm text-muted-foreground" aria-live="polite">
+          {firstLoad && !initialPage ? (
+            tc("loading")
+          ) : (
+            <>
+              <span className="font-semibold text-foreground">{t("results", { count: rows.length })}</span>
+              {status === "CanLoadMore" ? "+" : ""}
+            </>
+          )}
+        </p>
+      </div>
+
+      {/* Sticky search / sort bar */}
+      <div className="sticky top-16 z-30 -mx-4 mt-4 border-b bg-background/90 px-4 py-2.5 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <div className="flex items-center gap-2">
           <form
             onSubmit={(e) => {
               e.preventDefault();
               const q = new FormData(e.currentTarget).get("q")?.toString().trim();
               set({ q: q || undefined });
             }}
-            className="relative"
+            className="relative min-w-0 flex-1"
             role="search"
           >
             <label htmlFor="kw" className="sr-only">
               {t("keyword")}
             </label>
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
             <input
               id="kw"
               name="q"
+              type="search"
               key={urlFilters.q ?? ""}
               defaultValue={urlFilters.q}
               placeholder={t("keywordPlaceholder")}
-              className="h-9 w-48 rounded-lg border bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40 sm:w-60"
+              className={cn(controlCls, "w-full pr-3 pl-9 lg:max-w-md")}
             />
           </form>
+          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+            <SheetTrigger aria-label={t("filters")} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-10 rounded-xl lg:hidden")}>
+              <SlidersHorizontal /> <span>{t("filters")}</span>
+              {active > 0 && <span className="rounded-full bg-primary px-1.5 text-[11px] text-primary-foreground">{fmt.digits(active)}</span>}
+            </SheetTrigger>
+            <SheetContent side="bottom" className="flex max-h-[88vh] flex-col rounded-t-3xl p-0">
+              <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-muted" aria-hidden />
+              <SheetTitle className="border-b px-4 py-3 font-heading">{t("filters")}</SheetTitle>
+              <div className="flex-1 overflow-y-auto px-4 py-4">
+                <FilterPanel filters={filters} set={set} lockArea={!!fixedArea} lockType={!!fixedType} />
+              </div>
+              <div className="flex gap-2 border-t bg-background p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                <Button variant="outline" className="h-11 flex-1 rounded-xl" onClick={clear} disabled={active === 0}>
+                  {t("clear")}
+                </Button>
+                <Button className="h-11 flex-[2] rounded-xl font-semibold" onClick={() => setSheetOpen(false)}>
+                  {t("showResults")}
+                  {status !== "LoadingFirstPage" && ` (${fmt.digits(rows.length)}${status === "CanLoadMore" ? "+" : ""})`}
+                </Button>
+              </div>
+            </SheetContent>
+          </Sheet>
           <label className="sr-only" htmlFor="sort">
             {ts("label")}
           </label>
-          <select
-            id="sort"
-            value={filters.sort ?? "newest"}
-            onChange={(e) => set({ sort: e.target.value === "newest" ? undefined : (e.target.value as BrowseFilters["sort"]) })}
-            className="h-9 rounded-lg border bg-background px-2 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
-            disabled={!!filters.q}
-          >
-            {SORTS.map((s) => (
-              <option key={s} value={s}>
-                {ts(s)}
-              </option>
-            ))}
-          </select>
-          <div className="flex rounded-lg border p-0.5" role="group" aria-label="Layout">
-            {(
-              [
-                ["grid", LayoutGrid, t("grid")],
-                ["list", List, t("list")],
-                ["map", MapIcon, t("map")],
-              ] as const
-            ).map(([k, Icon, label]) => (
+          <div className="relative">
+            <ArrowUpDown className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <select
+              id="sort"
+              value={filters.sort ?? "newest"}
+              onChange={(e) => set({ sort: e.target.value === "newest" ? undefined : (e.target.value as BrowseFilters["sort"]) })}
+              className={cn(controlCls, "w-10 cursor-pointer appearance-none pl-9 text-transparent sm:w-auto sm:pr-3 sm:text-foreground")}
+              disabled={!!filters.q}
+            >
+              {SORTS.map((s) => (
+                <option key={s} value={s} className="text-foreground">
+                  {ts(s)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="hidden rounded-xl border bg-background p-0.5 sm:flex" role="group" aria-label="Layout">
+            {LAYOUTS.map(([k, Icon]) => (
               <button
                 key={k}
                 type="button"
                 onClick={() => setLayout(k)}
                 aria-pressed={layout === k}
-                aria-label={label}
-                className={cn("grid size-8 place-items-center rounded-md transition", layout === k ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
+                aria-label={t(k)}
+                title={t(k)}
+                className={cn("grid size-8.5 place-items-center rounded-lg transition", layout === k ? "bg-primary text-primary-foreground shadow-elev-1" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
               >
                 <Icon className="size-4" />
               </button>
             ))}
           </div>
-          <Button variant="outline" size="sm" className="h-9" onClick={() => setSaveOpen(true)}>
-            <BellPlus /> <span className="hidden sm:inline">{t("saveSearch")}</span>
+          <Button variant="outline" size="sm" className="h-10 rounded-xl" onClick={() => setSaveOpen(true)} aria-label={t("saveSearch")}>
+            <BellPlus /> <span className="hidden xl:inline">{t("saveSearch")}</span>
           </Button>
-          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-            <SheetTrigger className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-9 lg:hidden")}>
-              <SlidersHorizontal /> {t("filters")}
-              {active > 0 && <span className="rounded-full bg-primary px-1.5 text-[11px] text-primary-foreground">{fmt.digits(active)}</span>}
-            </SheetTrigger>
-            <SheetContent side="bottom" className="max-h-[85vh] rounded-t-2xl p-0">
-              <SheetTitle className="border-b px-4 py-3">{t("filters")}</SheetTitle>
-              <div className="overflow-y-auto px-4 py-3">
-                <FilterPanel filters={filters} set={set} lockArea={!!fixedArea} lockType={!!fixedType} />
-              </div>
-              <div className="flex gap-2 border-t p-3">
-                <Button variant="outline" className="flex-1" onClick={clear}>
-                  {t("clear")}
-                </Button>
-                <Button className="flex-1" onClick={() => setSheetOpen(false)}>
-                  {t("showResults")}
-                </Button>
-              </div>
-            </SheetContent>
-          </Sheet>
+        </div>
+        {/* Mobile layout switch */}
+        <div className="mt-2 grid grid-cols-3 rounded-xl border bg-background p-0.5 sm:hidden" role="group" aria-label="Layout">
+          {LAYOUTS.map(([k, Icon]) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setLayout(k)}
+              aria-pressed={layout === k}
+              className={cn("flex h-8 items-center justify-center gap-1.5 rounded-lg text-xs font-medium transition", layout === k ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
+            >
+              <Icon className="size-3.5" aria-hidden /> {t(k)}
+            </button>
+          ))}
         </div>
       </div>
 
-      {active > 0 && (
-        <button type="button" onClick={clear} className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-          <X className="size-3.5" /> {t("clear")}
-        </button>
+      {chips.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-1.5" aria-label={t("activeFilters")}>
+          {chips.map((c) => (
+            <button
+              key={c.key}
+              type="button"
+              onClick={c.remove}
+              aria-label={t("removeFilter", { label: c.label })}
+              className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-secondary py-1 pr-1.5 pl-3 text-xs font-medium text-secondary-foreground transition hover:border-primary/60"
+            >
+              {c.label}
+              <X className="size-3.5 opacity-70" aria-hidden />
+            </button>
+          ))}
+          {chips.length > 1 && (
+            <button type="button" onClick={clear} className="ml-1 rounded-full px-2 py-1 text-xs font-semibold text-primary hover:underline">
+              {t("clear")}
+            </button>
+          )}
+        </div>
       )}
 
-      <div className="mt-5 grid gap-6 lg:grid-cols-[280px_1fr]">
+      <div className="mt-5 grid gap-6 lg:grid-cols-[288px_1fr]">
         <aside className="hidden lg:block" aria-label={t("filters")}>
-          <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto rounded-2xl border bg-card p-4 shadow-soft">
+          <div className="sticky top-[8.5rem] max-h-[calc(100vh-9.5rem)] overflow-y-auto rounded-2xl border bg-card p-4 shadow-elev-1">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="flex items-center gap-2 font-heading font-bold">
+                <SlidersHorizontal className="size-4 text-primary" aria-hidden /> {t("filters")}
+              </h2>
+              {active > 0 && (
+                <button type="button" onClick={clear} className="text-xs font-semibold text-primary hover:underline">
+                  {t("clear")}
+                </button>
+              )}
+            </div>
             <FilterPanel filters={filters} set={set} lockArea={!!fixedArea} lockType={!!fixedType} />
           </div>
         </aside>
@@ -214,33 +323,51 @@ export function BrowseView({
           ) : (
             <>
               {rows.length === 0 && status !== "LoadingFirstPage" ? (
-                <div className="grid place-items-center rounded-2xl border border-dashed px-6 py-16 text-center">
-                  <SearchX className="size-10 text-muted-foreground" aria-hidden />
-                  <h2 className="mt-3 font-heading text-lg font-semibold">{t("emptyTitle")}</h2>
+                <div className="grid place-items-center rounded-3xl border border-dashed bg-surface px-6 py-16 text-center">
+                  <span className="grid size-16 place-items-center rounded-2xl bg-card text-muted-foreground shadow-elev-1">
+                    <SearchX className="size-8" aria-hidden />
+                  </span>
+                  <h2 className="mt-4 font-heading text-xl font-bold">{t("emptyTitle")}</h2>
                   <p className="mt-1 max-w-sm text-sm text-muted-foreground">{t("emptyBody")}</p>
-                  {active > 0 && (
-                    <Button variant="outline" className="mt-4" onClick={clear}>
-                      {t("clear")}
-                    </Button>
+                  {(suggestions.length > 0 || active > 0) && (
+                    <>
+                      <p className="mt-6 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("emptySuggestions")}</p>
+                      <div className="mt-2 flex flex-wrap justify-center gap-2">
+                        {suggestions.map((sg) => (
+                          <Button key={sg.label} variant="outline" className="rounded-full" onClick={() => set(sg.patch)}>
+                            {sg.label}
+                          </Button>
+                        ))}
+                        {active > 0 && (
+                          <Button className="rounded-full" onClick={clear}>
+                            {t("clear")}
+                          </Button>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
               ) : (
-                <div className={cn("grid gap-4", layout === "grid" ? "sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1")}>
+                <div className={cn("grid gap-4 sm:gap-5", layout === "grid" ? "sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1")}>
                   {rows.map((l, i) => (
                     <ListingCard key={l._id} l={l} saved={saved.has(l._id)} layout={layout} priority={i < 3} />
                   ))}
-                  {(status === "LoadingFirstPage" && rows.length === 0) || isLoading
-                    ? Array.from({ length: rows.length ? 3 : 6 }, (_, i) => <ListingCardSkeleton key={`s${i}`} layout={layout} />)
-                    : null}
+                  {firstLoad || isLoading ? Array.from({ length: rows.length ? 3 : 6 }, (_, i) => <ListingCardSkeleton key={`s${i}`} layout={layout} />) : null}
                 </div>
               )}
               <div ref={sentinel} className="h-10" />
               {status === "CanLoadMore" && (
-                <div className="flex justify-center">
-                  <Button variant="outline" onClick={() => loadMore(12)}>
-                    {t("loadMore")}
+                <div className="flex flex-col items-center gap-2">
+                  <p className="text-xs text-muted-foreground">{t("showing", { shown: fmt.digits(rows.length) })}</p>
+                  <Button variant="outline" size="lg" className="h-11 rounded-full px-8 font-semibold" onClick={() => loadMore(12)}>
+                    {t("loadMore")} <ChevronDown />
                   </Button>
                 </div>
+              )}
+              {status === "LoadingMore" && (
+                <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" aria-hidden /> {tc("loading")}
+                </p>
               )}
               {status === "Exhausted" && rows.length > 6 && <p className="text-center text-sm text-muted-foreground">{t("endOfResults")}</p>}
             </>

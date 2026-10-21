@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "telegram:setup": "node scripts/telegram-setup.mjs",
+    "seed:videos": "node scripts/seed-videos.mjs",
     "test": "vitest run"
   },
   "dependencies": {

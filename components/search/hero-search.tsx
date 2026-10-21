@@ -8,9 +8,10 @@ import { AreaCombobox, type AreaOption } from "@/components/search/area-combobox
 import { Button } from "@/components/ui/button";
 import { LAND_TYPES, PRICE_BUCKETS, SIZE_BUCKETS_KATHA, type LandType } from "@/lib/constants";
 import { toSqft } from "@/lib/units";
+import { cn } from "@/lib/utils";
 
 const selectCls =
-  "h-11 w-full rounded-xl border bg-background px-3 text-[15px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40";
+  "h-12 w-full cursor-pointer rounded-xl border bg-surface px-3 text-[15px] font-medium outline-none transition-colors hover:border-primary/40 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40 lg:border-transparent lg:bg-transparent lg:hover:bg-surface";
 
 export function HeroSearch() {
   const t = useTranslations("home");
@@ -38,39 +39,69 @@ export function HeroSearch() {
     router.push(`/browse?${sp}`);
   };
 
-  return (
-    <form onSubmit={submit} className="glass grid gap-2.5 rounded-2xl p-3 shadow-xl sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr_auto]" role="search">
-      <label className="sr-only" htmlFor="hero-area">
-        {t("searchPlaceholder")}
+  const field = (label: string, htmlFor: string, child: React.ReactNode, className?: string) => (
+    <div className={cn("flex min-w-0 flex-col gap-1 rounded-xl px-1 pt-1 lg:px-3", className)}>
+      <label htmlFor={htmlFor} className="px-0.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+        {label}
       </label>
-      <AreaCombobox id="hero-area" value={area} onChange={setArea} placeholder={t("searchPlaceholder")} className="sm:col-span-2 lg:col-span-1" />
-      <select aria-label={tl("residential")} className={selectCls} value={type} onChange={(e) => setType(e.target.value as LandType | "")}>
-        <option value="">{t("anyType")}</option>
-        {LAND_TYPES.map((lt) => (
-          <option key={lt} value={lt}>
-            {tl(lt)}
-          </option>
-        ))}
-      </select>
-      <select aria-label={t("anyPrice")} className={selectCls} value={price} onChange={(e) => setPrice(e.target.value)}>
-        <option value="">{t("anyPrice")}</option>
-        {PRICE_BUCKETS.map((b) => (
-          <option key={b.key} value={b.key}>
-            {tp(b.key)}
-          </option>
-        ))}
-      </select>
-      <select aria-label={t("anySize")} className={selectCls} value={size} onChange={(e) => setSize(e.target.value)}>
-        <option value="">{t("anySize")}</option>
-        {SIZE_BUCKETS_KATHA.map((b) => (
-          <option key={b.key} value={b.key}>
-            {tsz(b.key)}
-          </option>
-        ))}
-      </select>
-      <Button type="submit" className="h-11 gap-2 rounded-xl px-6 text-[15px] sm:col-span-2 lg:col-span-1">
-        <Search className="size-4" /> {tc("search")}
-      </Button>
+      {child}
+    </div>
+  );
+
+  return (
+    <form
+      onSubmit={submit}
+      className="grid grid-cols-2 gap-x-2 gap-y-2.5 rounded-2xl border border-white/20 bg-card p-3 text-card-foreground shadow-elev-4 sm:gap-3 sm:p-4 lg:grid-cols-[1.7fr_1fr_1fr_1fr_auto] lg:items-end lg:gap-0 lg:divide-x lg:divide-border lg:p-3"
+      role="search"
+    >
+      {field(
+        t("searchArea"),
+        "hero-area",
+        <AreaCombobox id="hero-area" value={area} onChange={setArea} placeholder={t("searchPlaceholder")} inputClassName="h-12 bg-surface font-medium hover:border-primary/40 lg:border-transparent lg:bg-transparent lg:hover:bg-surface" />,
+        "col-span-2 lg:col-span-1 lg:pl-1",
+      )}
+      {field(
+        t("searchType"),
+        "hero-type",
+        <select id="hero-type" className={selectCls} value={type} onChange={(e) => setType(e.target.value as LandType | "")}>
+          <option value="">{t("anyType")}</option>
+          {LAND_TYPES.map((lt) => (
+            <option key={lt} value={lt}>
+              {tl(lt)}
+            </option>
+          ))}
+        </select>,
+        "col-span-2 sm:col-span-1",
+      )}
+      {field(
+        t("searchBudget"),
+        "hero-price",
+        <select id="hero-price" className={selectCls} value={price} onChange={(e) => setPrice(e.target.value)}>
+          <option value="">{t("anyPrice")}</option>
+          {PRICE_BUCKETS.map((b) => (
+            <option key={b.key} value={b.key}>
+              {tp(b.key)}
+            </option>
+          ))}
+        </select>,
+      )}
+      {field(
+        t("searchSize"),
+        "hero-size",
+        <select id="hero-size" className={selectCls} value={size} onChange={(e) => setSize(e.target.value)}>
+          <option value="">{t("anySize")}</option>
+          {SIZE_BUCKETS_KATHA.map((b) => (
+            <option key={b.key} value={b.key}>
+              {tsz(b.key)}
+            </option>
+          ))}
+        </select>,
+      )}
+      <div className="col-span-2 sm:col-span-1 sm:self-end lg:border-0 lg:pl-3">
+        <Button type="submit" className="h-12 w-full gap-2 rounded-xl px-7 text-base font-semibold shadow-elev-2">
+          <Search className="size-4.5" /> {tc("search")}
+        </Button>
+      </div>
     </form>
   );
 }

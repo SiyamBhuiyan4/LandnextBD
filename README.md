@@ -19,8 +19,9 @@ npx convex dev            # first run: log in, pick/create the project; writes .
 node scripts/setup-auth-keys.mjs          # sets JWT_PRIVATE_KEY + JWKS on the dev deployment
 npx convex env set SITE_URL http://localhost:3000
 npx convex env set MEDIA_SIGNING_SECRET "$(openssl rand -hex 32)"
-npx convex run seed:run                   # 8 areas, 6 sellers, 40 listings, 21 placeholder videos
+npx convex run seed:run                   # 8 areas, 6 sellers, 40 listings
 node scripts/seed-images.mjs              # generates original illustrated photos and attaches them
+npm run seed:videos                       # renders original walkthrough clips (H.264 MP4) and uploads them via Convex storage -> Telegram
 npm run dev                               # http://localhost:3000
 ```
 

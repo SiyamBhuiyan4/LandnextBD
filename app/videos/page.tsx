@@ -1,6 +1,7 @@
 "use client";
 
 import { usePaginatedQuery, useQuery } from "convex/react";
+import { PlayCircle, Wifi } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/convex/_generated/api";
@@ -34,16 +35,23 @@ export default function VideosPage() {
 
   return (
     <div className="container-page py-8">
-      <h1 className="font-heading text-3xl font-bold tracking-tight">{t("feedTitle")}</h1>
-      <p className="mt-1 text-muted-foreground">{t("feedSubtitle")}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{t("dataSaver")}</p>
+      <div className="relative isolate overflow-hidden rounded-3xl bg-brand-deep px-6 py-8 text-brand-deep-foreground shadow-elev-2 sm:px-10 sm:py-10">
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(36rem_18rem_at_100%_0%,color-mix(in_oklch,var(--warm)_32%,transparent),transparent_70%)]" aria-hidden />
+        <div className="bg-noise absolute inset-0 -z-10 opacity-60 mix-blend-overlay" aria-hidden />
+        <PlayCircle className="absolute -right-6 -bottom-8 -z-10 size-48 text-white/[0.06]" aria-hidden />
+        <h1 className="font-heading text-3xl font-extrabold tracking-tight sm:text-4xl">{t("feedTitle")}</h1>
+        <p className="mt-2 max-w-xl text-brand-deep-foreground/80">{t("feedSubtitle")}</p>
+        <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium">
+          <Wifi className="size-3.5" aria-hidden /> {t("dataSaver")}
+        </p>
+      </div>
 
-      <div className="mt-6 flex flex-wrap items-center gap-2">
+      <div className="scrollbar-none -mx-4 mt-6 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
         <select
           aria-label={tb("area")}
           value={areaId ?? ""}
           onChange={(e) => setAreaId((e.target.value || undefined) as Id<"areas"> | undefined)}
-          className="h-9 rounded-lg border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+          className="h-9 rounded-full border bg-background px-3 text-sm font-medium outline-none hover:border-primary/40 focus-visible:ring-3 focus-visible:ring-ring/40"
         >
           <option value="">{tb("allBangladesh")}</option>
           {areas?.map((a) => (
@@ -60,7 +68,10 @@ export default function VideosPage() {
               type="button"
               aria-pressed={landType === lt}
               onClick={() => setLandType(landType === lt ? undefined : lt)}
-              className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium", landType === lt ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted")}
+              className={cn(
+                "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition",
+                landType === lt ? "border-primary bg-primary text-primary-foreground shadow-elev-1" : "bg-background hover:border-primary/40 hover:bg-secondary/60",
+              )}
             >
               <Icon size={14} /> {tl(lt)}
             </button>
@@ -74,11 +85,11 @@ export default function VideosPage() {
         ))}
         {status === "LoadingFirstPage" && Array.from({ length: 8 }, (_, i) => <div key={i} className="aspect-video animate-pulse rounded-xl bg-muted" />)}
       </div>
-      {status === "Exhausted" && results.length === 0 && <p className="mt-6 rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">{t("noVideos")}</p>}
+      {status === "Exhausted" && results.length === 0 && <p className="mt-6 rounded-3xl border border-dashed bg-surface p-12 text-center text-sm text-muted-foreground">{t("noVideos")}</p>}
       <div ref={sentinel} className="h-8" />
       {status === "CanLoadMore" && (
         <div className="flex justify-center">
-          <Button variant="outline" onClick={() => loadMore(12)}>
+          <Button variant="outline" size="lg" className="h-11 rounded-full px-8 font-semibold" onClick={() => loadMore(12)}>
             {tb("loadMore")}
           </Button>
         </div>

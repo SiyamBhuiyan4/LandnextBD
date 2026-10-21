@@ -29,6 +29,14 @@ export function SignInForm() {
   const [step, setStep] = useState<"target" | "code">("target");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resendAt, setResendAt] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (step !== "code" || now >= resendAt) return;
+    const h = setTimeout(() => setNow(Date.now()), 1000);
+    return () => clearTimeout(h);
+  }, [step, now, resendAt]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -40,13 +48,16 @@ export function SignInForm() {
   const provider = kind === "email" ? "email-otp" : "phone-otp";
   const identifier = kind === "email" ? target.trim().toLowerCase() : (normalizeBdPhone(target) ?? target);
 
-  const sendCode = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const sendCode = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (kind === "phone" && !normalizeBdPhone(target)) return toast.error(t("phoneLabel"));
     setBusy(true);
     try {
       await signIn(provider, { [kind]: identifier });
       setStep("code");
+      setCode("");
+      setResendAt(Date.now() + 30_000);
+      setNow(Date.now());
     } catch {
       toast.error("Could not send the code. Please try again.");
     } finally {
@@ -54,11 +65,12 @@ export function SignInForm() {
     }
   };
 
-  const verify = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const verify = async (e?: React.FormEvent, value = code) => {
+    e?.preventDefault();
+    if (busy) return;
     setBusy(true);
     try {
-      await signIn(provider, { [kind]: identifier, code: code.trim() });
+      await signIn(provider, { [kind]: identifier, code: value.trim() });
     } catch {
       toast.error(t("invalidCode"));
       setBusy(false);
@@ -141,7 +153,12 @@ export function SignInForm() {
               pattern="[0-9]{6}"
               maxLength={6}
               value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+              onChange={(e) => {
+                const v = e.target.value.replace(/\D/g, "").slice(0, 6);
+                setCode(v);
+                // Auto-submit once all six digits are in (also covers SMS autofill).
+                if (v.length === 6 && code.length !== 6) void verify(undefined, v);
+              }}
               required
               autoFocus
             />
@@ -149,9 +166,12 @@ export function SignInForm() {
           <Button type="submit" className="h-11 w-full" disabled={busy || code.length !== 6}>
             {busy && <Loader2 className="animate-spin" />} {t("verify")}
           </Button>
+          <button type="button" className="w-full text-sm text-primary hover:underline disabled:text-muted-foreground disabled:no-underline" disabled={busy || now < resendAt} onClick={() => void sendCode()}>
+            {now < resendAt ? t("resendIn", { s: Math.ceil((resendAt - now) / 1000) }) : t("resend")}
+          </button>
           <button
             type="button"
-            className="w-full text-sm text-primary hover:underline"
+            className="w-full text-sm text-muted-foreground hover:text-foreground hover:underline"
             onClick={() => {
               setStep("target");
               setCode("");

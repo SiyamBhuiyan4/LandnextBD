@@ -92,7 +92,7 @@ export function AreaCombobox({
         )}
       />
       {open && results && results.length > 0 && (
-        <ul id={listId} role="listbox" className="absolute z-50 mt-1 max-h-72 w-full overflow-auto rounded-xl border bg-popover p-1 shadow-lg">
+        <ul id={listId} role="listbox" className="absolute z-50 mt-1.5 max-h-72 w-full min-w-64 overflow-auto rounded-xl border bg-popover p-1 text-popover-foreground shadow-elev-4">
           {results.map((a, i) => (
             <li
               key={a._id}
@@ -100,14 +100,14 @@ export function AreaCombobox({
               aria-selected={i === active}
               onMouseEnter={() => setActive(i)}
               onMouseDown={(e) => (e.preventDefault(), choose(a))}
-              className={cn("flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm", i === active && "bg-muted")}
+              className={cn("flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-sm", i === active && "bg-secondary")}
             >
               <MapPin className="size-4 shrink-0 text-primary" aria-hidden />
               <span className="flex-1">
                 <span className="font-medium">{name(a)}</span>
                 <span className="text-muted-foreground"> · {a.district}</span>
               </span>
-              <span className="text-xs text-muted-foreground">{fmt.digits(a.activeCount)}</span>
+              <span className="rounded-full bg-muted px-2 text-xs text-muted-foreground tabular-nums">{fmt.digits(a.activeCount)}</span>
             </li>
           ))}
         </ul>

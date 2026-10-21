@@ -71,8 +71,10 @@ export const CONFIG = {
   maxImageBytes: 8 * 1024 * 1024,
   maxDocBytes: 10 * 1024 * 1024,
   maxVideosPerListing: 5,
-  maxVideoBytes: 20 * 1024 * 1024, // Telegram Bot API download limit
-  maxVideoDurationSec: 300,
+  maxVideoBytes: 1024 * 1024 * 1024, // 1 GB; stored on Telegram in parts
+  maxVideoDurationSec: 30 * 60,
+  /** Files bigger than this are uploaded and stored on Telegram in parts of this size (Bot API downloads stop at 20 MB). */
+  telegramChunkBytes: 19 * 1024 * 1024,
   videoMimeTypes: ["video/mp4", "video/quicktime", "video/webm"],
   imageMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/avif"],
   docMimeTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp"],

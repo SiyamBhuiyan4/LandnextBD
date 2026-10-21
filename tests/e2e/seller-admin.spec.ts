@@ -15,8 +15,8 @@ async function signIn(page: Page, email: string, next = "/") {
   await page.goto(`/signin?next=${encodeURIComponent(next)}`);
   await page.getByLabel("Email address").fill(email);
   await page.getByRole("button", { name: "Send code" }).click();
+  // The form signs in on its own once all six digits are entered.
   await page.getByLabel("6-digit code").fill(CODE!);
-  await page.getByRole("button", { name: /Verify/ }).click();
   await expect(page.getByRole("button", { name: "Account" })).toBeVisible();
   // The proxy may bounce a freshly signed-in /signin request to "/" before the form redirects.
   if (new URL(page.url()).pathname !== next) await page.goto(next);
@@ -24,33 +24,33 @@ async function signIn(page: Page, email: string, next = "/") {
 
 test.describe.serial("seller posts, admin approves", () => {
   test("seller creates a listing through the wizard", async ({ page }) => {
+    test.setTimeout(180_000); // the video has to reach Telegram
     await signIn(page, sellerEmail, "/dashboard");
     await page.getByRole("button", { name: "Start selling" }).click();
     await page.goto("/dashboard/listings/new");
-    await page.getByLabel("Listing title").fill(title);
-    await page.getByLabel("Land size").fill("4");
-    await page.getByLabel("Total price (BDT)").fill("9000000");
-    await page.getByLabel("Description").fill("End-to-end test listing with a south-facing frontage and a 30 ft road.");
-    await page.getByRole("button", { name: "Next", exact: true }).click();
+    await step(page, "About the land");
     await page.getByRole("combobox").fill("Purba");
     await page.getByRole("option", { name: /Purbachal/ }).click();
-    await page.getByRole("button", { name: "Next", exact: true }).click(); // saves draft
-    await step(page, "Details");
-    await page.getByRole("button", { name: "Electricity" }).click();
+    await page.getByLabel("Land size").fill("4");
+    await page.getByLabel("Total price (BDT)").fill("9000000");
+    await page.getByLabel("Listing title").fill(title);
+    await page.getByRole("button", { name: "Next", exact: true }).click(); // creates the draft
+    await step(page, "Photos & videos");
+    await expect(page.getByTestId("save-state")).toBeVisible();
+    await page.getByTestId("photo-input").setInputFiles({ name: "plot.png", mimeType: "image/png", buffer: tinyPng() });
+    await expect(page.locator('[data-testid="photo-grid"] li[draggable="true"]')).toHaveCount(1);
+    await page.getByTestId("video-input").setInputFiles({ name: "walkthrough.webm", mimeType: "video/webm", buffer: await recordWebm(page) });
+    await expect(page.locator('[data-testid="video-list"] li[data-status="ready"]')).toHaveCount(1, { timeout: 90_000 });
     await page.getByRole("button", { name: "Next", exact: true }).click();
-    await step(page, "Documents");
-    await page.getByRole("button", { name: "Next", exact: true }).click(); // documents (optional)
-    await step(page, "Photos");
-    await page.locator('input[type="file"]').setInputFiles({ name: "plot.png", mimeType: "image/png", buffer: tinyPng() });
-    await expect(page.locator("main ul img")).toHaveCount(1);
+    await step(page, "More details");
+    await page.getByLabel("Describe the land").fill("End-to-end test listing with a south-facing frontage and a 30 ft road.");
+    await page.getByRole("checkbox", { name: "Electricity" }).click();
     await page.getByRole("button", { name: "Next", exact: true }).click();
-    await step(page, "Videos");
-    await page.locator('input[type="file"]').setInputFiles({ name: "walkthrough.webm", mimeType: "video/webm", buffer: await recordWebm(page) });
-    await expect(page.locator("main ul li").filter({ hasText: "✓" })).toHaveCount(1, { timeout: 60_000 });
-    await page.getByRole("button", { name: "Next", exact: true }).click();
-    await step(page, "Review");
+    await step(page, "Review & submit");
     await page.getByRole("button", { name: "Submit for review" }).click();
-    await expect(page).toHaveURL(/\/dashboard\/listings$/);
+    await step(page, "Submitted for review!");
+    await page.getByRole("link", { name: "Go to my listings" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/listings$/, { timeout: 60_000 }); // first visit may compile in dev
     await expect(page.getByText(title)).toBeVisible();
     await expect(page.getByText("In review").first()).toBeVisible();
   });
@@ -59,15 +59,18 @@ test.describe.serial("seller posts, admin approves", () => {
     await signIn(page, adminEmail);
     execFileSync("npx", ["convex", "run", "users:setRole", JSON.stringify({ email: adminEmail, role: "admin" })]);
     await page.goto("/admin/review");
-    await page.getByText(title).click();
+    await page.getByRole("link", { name: title }).click();
+    await expect(page).toHaveURL(/\/admin\/review\/.+/);
+    await expect(page.getByRole("heading", { name: title })).toBeVisible();
     await page.getByRole("button", { name: "Approve", exact: true }).click();
     await expect(page).toHaveURL(/\/admin\/review$/);
     await page.goto("/browse?q=" + encodeURIComponent(run));
     await page.getByText(title).click();
     // Detail page: the uploaded photo is served through /media and the video is playable.
     await expect(page).toHaveURL(/\/land\//);
-    await expect(page.locator('main img[src*="media"]').first()).toBeVisible();
-    await expect(page.getByText(/Watch videos · 1 video/)).toBeVisible();
+    await expect(page.getByRole("img", { name: /photo 1/ }).first()).toBeAttached();
+    expect(await page.getByRole("img", { name: /photo 1/ }).first().getAttribute("src")).toContain("media");
+    await expect(page.getByRole("button", { name: /^Play video/ }).first()).toBeVisible();
   });
 });
 

@@ -19,7 +19,7 @@ test("filters live in the URL and survive reload", async ({ page }) => {
   await page.reload();
   const filters = page.getByRole("button", { name: /^Filters/ });
   if (await filters.isVisible()) await filters.click(); // mobile: filters live in a bottom sheet
-  await expect(page.getByRole("button", { name: /Residential/ }).first()).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: /^Residential/ }).first()).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#sort")).toHaveValue("price_desc");
 });
 
