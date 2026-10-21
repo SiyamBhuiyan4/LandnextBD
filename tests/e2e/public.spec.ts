@@ -17,6 +17,8 @@ test("filters live in the URL and survive reload", async ({ page }) => {
   await page.goto("/browse?landType=residential&verifiedOnly=1&sort=price_desc");
   await expect(page.locator("article").first()).toBeVisible();
   await page.reload();
+  const filters = page.getByRole("button", { name: /^Filters/ });
+  if (await filters.isVisible()) await filters.click(); // mobile: filters live in a bottom sheet
   await expect(page.getByRole("button", { name: /Residential/ }).first()).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#sort")).toHaveValue("price_desc");
 });
@@ -46,7 +48,9 @@ test("watch a video in the gallery", async ({ page }) => {
 
 test("language toggle switches to Bangla", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: /বাংলা/ }).first().click();
+  const menu = page.getByRole("button", { name: "Menu" });
+  if (await menu.isVisible()) await menu.click(); // mobile: language toggle is in the menu sheet
+  await page.getByRole("button", { name: /বাংলা/ }).filter({ visible: true }).first().click();
   await expect(page.locator("html")).toHaveAttribute("lang", "bn");
   await expect(page.getByText("সক্রিয় বিজ্ঞাপন", { exact: true })).toBeVisible();
 });

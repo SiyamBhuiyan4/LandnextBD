@@ -47,13 +47,18 @@ the repo or logs.**
 1. Create a bot with **@BotFather** (or use the existing **@LandnestBD_bot**).
 2. Create a **private channel** (e.g. "land.db media"). Add the bot as **admin** with **Post messages** permission.
 3. Post any message in the channel.
-4. Find the chat ID: open `https://api.telegram.org/bot<TOKEN>/getUpdates` in your browser
-   (or run `npm run telegram:chat-id`). The channel's `chat.id` starts with **`-100`**.
-5. Set both as **Convex env vars** (server only — never in `.env.local` for the frontend):
+4. Put the token in `.env.local` (gitignored) as `BOT_TOKEN=<token>`, then list the chats the bot can see:
    ```bash
-   npx convex env set TELEGRAM_BOT_TOKEN <token>
-   npx convex env set TELEGRAM_CHAT_ID -100xxxxxxxxxx
+   npm run telegram:setup                    # prints chat ids; the channel's starts with -100
    ```
+5. Connect the channel. This checks the bot is an admin there, makes a test post (deleted right away),
+   and sets `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` as **Convex env vars** (Convex actions only
+   read Convex env vars, not `.env.local`):
+   ```bash
+   npm run telegram:setup -- -100xxxxxxxxxx  # add --prod for the production deployment
+   ```
+   Manual alternative: open `https://api.telegram.org/bot<TOKEN>/getUpdates` to find `chat.id`, then
+   `npx convex env set TELEGRAM_BOT_TOKEN <token>` and `npx convex env set TELEGRAM_CHAT_ID -100xxxxxxxxxx`.
 6. Move files that were uploaded before the channel existed:
    ```bash
    npx convex run telegram:backfill      # paced at ~20 posts/min (Bot API limit)

@@ -18,6 +18,8 @@ async function signIn(page: Page, email: string, next = "/") {
   await page.getByLabel("6-digit code").fill(CODE!);
   await page.getByRole("button", { name: /Verify/ }).click();
   await expect(page.getByRole("button", { name: "Account" })).toBeVisible();
+  // The proxy may bounce a freshly signed-in /signin request to "/" before the form redirects.
+  if (new URL(page.url()).pathname !== next) await page.goto(next);
 }
 
 test.describe.serial("seller posts, admin approves", () => {
@@ -43,6 +45,8 @@ test.describe.serial("seller posts, admin approves", () => {
     await expect(page.locator("main ul img")).toHaveCount(1);
     await page.getByRole("button", { name: "Next", exact: true }).click();
     await step(page, "Videos");
+    await page.locator('input[type="file"]').setInputFiles({ name: "walkthrough.webm", mimeType: "video/webm", buffer: await recordWebm(page) });
+    await expect(page.locator("main ul li").filter({ hasText: "✓" })).toHaveCount(1, { timeout: 60_000 });
     await page.getByRole("button", { name: "Next", exact: true }).click();
     await step(page, "Review");
     await page.getByRole("button", { name: "Submit for review" }).click();
@@ -59,7 +63,11 @@ test.describe.serial("seller posts, admin approves", () => {
     await page.getByRole("button", { name: "Approve", exact: true }).click();
     await expect(page).toHaveURL(/\/admin\/review$/);
     await page.goto("/browse?q=" + encodeURIComponent(run));
-    await expect(page.getByText(title)).toBeVisible();
+    await page.getByText(title).click();
+    // Detail page: the uploaded photo is served through /media and the video is playable.
+    await expect(page).toHaveURL(/\/land\//);
+    await expect(page.locator('main img[src*="media"]').first()).toBeVisible();
+    await expect(page.getByText(/Watch videos · 1 video/)).toBeVisible();
   });
 });
 
@@ -71,4 +79,29 @@ function tinyPng() {
     "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGNk+M/AwMDAxMDAwMDAAAANHQEDasKb6QAAAABJRU5ErkJggg==",
     "base64",
   );
+}
+
+/** ~1 s WebM recorded from a canvas in the page (no fixture file needed). */
+async function recordWebm(page: Page) {
+  const b64 = await page.evaluate(async () => {
+    const canvas = Object.assign(document.createElement("canvas"), { width: 160, height: 90 });
+    const g = canvas.getContext("2d")!;
+    const rec = new MediaRecorder(canvas.captureStream(15), { mimeType: "video/webm" });
+    const chunks: Blob[] = [];
+    rec.ondataavailable = (e) => chunks.push(e.data);
+    const done = new Promise((r) => (rec.onstop = r));
+    rec.start();
+    for (let i = 0; i < 15; i++) {
+      g.fillStyle = `hsl(${i * 24} 60% 45%)`;
+      g.fillRect(0, 0, 160, 90);
+      await new Promise((r) => setTimeout(r, 66));
+    }
+    rec.stop();
+    await done;
+    const bytes = new Uint8Array(await new Blob(chunks, { type: "video/webm" }).arrayBuffer());
+    let bin = "";
+    bytes.forEach((x) => (bin += String.fromCharCode(x)));
+    return btoa(bin);
+  });
+  return Buffer.from(b64, "base64");
 }
