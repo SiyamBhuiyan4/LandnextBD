@@ -116,7 +116,7 @@ describe("privacy", () => {
     // must never be handed the seller's personal number.
     expect(revealed).toMatchObject({ exactAddress: "Plot 9, Sector 5, Purbachal", lat: 23.8391 });
     expect(revealed?.phone).not.toBe("+8801700000001");
-    expect(revealed?.email).not.toBe("seller@landnestbd.test");
+    expect(revealed?.email).not.toBe("seller@test.test");
 
     // Nor through the buyer's own inquiry list.
     const mine = await as(buyer).query(api.inquiries.mine, {});
