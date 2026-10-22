@@ -2,6 +2,7 @@
 
 import { useConvex, useQuery } from "convex/react";
 import { motion, useReducedMotion } from "framer-motion";
+import type { LucideIcon } from "lucide-react";
 import { ArrowRight, BadgeCheck, ChevronLeft, ChevronRight, Clapperboard, FileCheck2, LayoutList, MapPin, PlayCircle, Plus, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
@@ -14,6 +15,7 @@ import { ListingCard, ListingCardSkeleton } from "@/components/listings/listing-
 import { buttonVariants } from "@/components/ui/button";
 import { VideoThumb } from "@/components/video/video-card";
 import { VideoGalleryDialog } from "@/components/video/video-gallery";
+import { useCountUp } from "@/hooks/use-count-up";
 import { useFmt } from "@/hooks/use-fmt";
 import { districtName } from "@/lib/places";
 import type { LandType } from "@/lib/constants";
@@ -91,7 +93,6 @@ export function StatsStrip() {
     };
   }, [convex]);
   const t = useTranslations("home");
-  const fmt = useFmt();
   const items = [
     { label: t("statActive"), value: s?.activeListings, Icon: LayoutList },
     { label: t("statAreas"), value: s?.areasCovered, Icon: MapPin },
@@ -102,20 +103,29 @@ export function StatsStrip() {
     <div className="container-page relative z-10 -mt-10">
       <ul className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border shadow-elev-3 sm:grid-cols-4">
         {items.map(({ label, value, Icon }) => (
-          <li key={label} className="flex items-center gap-3 bg-card px-4 py-4 sm:px-5">
-            <span className="hidden size-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary sm:grid">
-              <Icon className="size-5" aria-hidden />
-            </span>
-            <div className="flex flex-col-reverse">
-              <span className="text-xs font-medium text-muted-foreground">{label}</span>
-              <span className="font-heading text-2xl font-extrabold tracking-tight text-price tabular-nums">
-                {value === undefined ? <span className="inline-block h-7 w-12 skeleton rounded" /> : fmt.digits(value)}
-              </span>
-            </div>
-          </li>
+          <Stat key={label} label={label} value={value} Icon={Icon} />
         ))}
       </ul>
     </div>
+  );
+}
+
+/** One stat tile. The number counts up once the value arrives. */
+function Stat({ label, value, Icon }: { label: string; value: number | undefined; Icon: LucideIcon }) {
+  const fmt = useFmt();
+  const shown = useCountUp(value);
+  return (
+    <li className="flex items-center gap-3 bg-card px-4 py-4 sm:px-5">
+      <span className="hidden size-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary sm:grid">
+        <Icon className="size-5" aria-hidden />
+      </span>
+      <div className="flex flex-col-reverse">
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+        <span className="font-heading text-2xl font-extrabold tracking-tight text-price tabular-nums">
+          {shown === undefined ? <span className="inline-block h-7 w-12 skeleton rounded" /> : fmt.digits(shown)}
+        </span>
+      </div>
+    </li>
   );
 }
 
