@@ -29,12 +29,16 @@ export default function AccountPage() {
   const router = useRouter();
   const { fullPrice, setFullPrice } = usePrefs();
   const [form, setForm] = useState({ name: "", accountType: "owner" as AccountType, companyName: "", bio: "", phone: "" });
+  const [nid, setNid] = useState("");
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    if (me) setForm({ name: me.name ?? "", accountType: me.accountType, companyName: me.companyName ?? "", bio: me.bio ?? "", phone: me.phone ?? "" });
-  }, [me?._id]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (me) {
+      setForm({ name: me.name ?? "", accountType: me.accountType, companyName: me.companyName ?? "", bio: me.bio ?? "", phone: me.phone ?? "" });
+      if (me.nidNumber) setNid(me.nidNumber);
+    }
+  }, [me?._id, me?.nidNumber]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (me === null && !authLoading) return <NoAccount />;
   if (!me) return <div className="container-page py-20 text-center"><Loader2 className="mx-auto animate-spin" /></div>;
@@ -117,20 +121,37 @@ export default function AccountPage() {
         </Button>
       </form>
 
-      {me.role !== "buyer" && (
-        <div className="mt-6 rounded-2xl border bg-card p-5 shadow-soft">
-          <h2 className="flex items-center gap-2 font-heading font-semibold">
-            {t("verification")} {me.verificationStatus === "verified" && <BadgeCheck className="size-5 text-primary" />}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("verificationBody")}</p>
-          <p className="mt-3 text-sm font-medium">{t(`verificationStatus.${me.verificationStatus}`)}</p>
-          {(me.verificationStatus === "unverified" || me.verificationStatus === "rejected") && (
-            <Button className="mt-3" variant="outline" onClick={() => requestVerification().then(() => toast.success(t("verificationStatus.pending")), (e) => toast.error(errorMessage(e)))}>
-              {t("requestVerification")}
+      <div className="mt-6 rounded-2xl border bg-card p-5 shadow-soft">
+        <h2 className="flex items-center gap-2 font-heading font-semibold">
+          {t("verification")} {me.verificationStatus === "verified" && <BadgeCheck className="size-5 text-primary" />}
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">{t("verificationBody")}</p>
+        <p className="mt-3 text-sm font-medium">{t(`verificationStatus.${me.verificationStatus}`)}</p>
+        {(me.verificationStatus === "unverified" || me.verificationStatus === "rejected") && (
+          <div className="mt-4 space-y-3">
+            <label className="block text-sm font-medium">
+              National ID (NID) Number
+              <input
+                className={`${inputCls} mt-1`}
+                type="text"
+                placeholder="Enter 10, 13, or 17 digit NID"
+                value={nid}
+                onChange={(e) => setNid(e.target.value.replace(/\D/g, "").slice(0, 17))}
+              />
+              <span className="mt-1 block text-xs font-normal text-muted-foreground">Required to contact LandnestBD and inquire about properties.</span>
+            </label>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!nid || nid.length < 10) return toast.error("Enter a valid NID number.");
+                requestVerification({ nidNumber: nid }).then(() => toast.success(t("verificationStatus.pending")), (e) => toast.error(errorMessage(e)));
+              }}
+            >
+              Submit NID for Verification
             </Button>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
       <div className="mt-6 rounded-2xl border bg-card p-5 shadow-soft">
         <label className="flex items-center justify-between gap-3 text-sm font-medium">

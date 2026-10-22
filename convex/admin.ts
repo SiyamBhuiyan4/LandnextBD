@@ -292,6 +292,7 @@ export const users = query({
       role: u.role ?? "buyer",
       accountType: u.accountType ?? "owner",
       verificationStatus: u.verificationStatus ?? "unverified",
+      nidNumber: u.nidNumber,
       banned: u.banned ?? false,
       createdAt: u.createdAt ?? u._creationTime,
     }));

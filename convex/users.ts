@@ -29,6 +29,7 @@ export const viewer = query({
       verificationStatus: user.verificationStatus ?? "unverified",
       companyName: user.companyName,
       bio: user.bio,
+      nidNumber: user.nidNumber,
       createdAt: user.createdAt ?? user._creationTime,
       unreadNotifications: unread.length,
     };
@@ -95,12 +96,19 @@ export const becomeSeller = mutation({
 });
 
 export const requestVerification = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { nidNumber: v.optional(v.string()) },
+  handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     if (user.verificationStatus === "verified") return null;
     if (!user.phone && !user.email) throw new ConvexError({ code: "INVALID", message: "Add a phone or email first." });
-    await ctx.db.patch(user._id, { verificationStatus: "pending" });
+    const nid = args.nidNumber?.trim();
+    if (nid && !/^\d{10,17}$/.test(nid)) {
+      throw new ConvexError({ code: "INVALID", message: "Enter a valid 10, 13, or 17 digit Bangladeshi NID number." });
+    }
+    await ctx.db.patch(user._id, {
+      verificationStatus: "pending",
+      ...(nid ? { nidNumber: nid } : {}),
+    });
     return null;
   },
 });

@@ -25,8 +25,8 @@ async function setup() {
       centerLng: 90.53,
       activeCount: 0,
     });
-    const mk = (email: string, role: "buyer" | "seller" | "admin", phone?: string) =>
-      ctx.db.insert("users", { email, role, phone, verificationStatus: "unverified", accountType: "owner", createdAt: Date.now() - 30 * 86400_000 });
+    const mk = (email: string, role: "buyer" | "seller" | "admin", phone?: string, verificationStatus: "unverified" | "verified" = "verified") =>
+      ctx.db.insert("users", { email, role, phone, verificationStatus, accountType: "owner", createdAt: Date.now() - 30 * 86400_000 });
     const seller = await mk("seller@test.test", "seller", "+8801700000001");
     const buyer = await mk("buyer@test.test", "buyer");
     const admin = await mk("admin@test.test", "admin");

@@ -138,6 +138,14 @@ export function ContactPanel({
         <Link href={`/signin?next=${encodeURIComponent(pathname)}`} className={buttonVariants({ className: "w-full" })}>
           {t("signInToContact")}
         </Link>
+      ) : me && me.role !== "admin" && me.verificationStatus !== "verified" ? (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-sm space-y-2">
+          <p className="font-semibold text-amber-600 dark:text-amber-400">NID Verification Required</p>
+          <p className="text-xs text-muted-foreground">To contact LandnestBD and inquire about this property, please complete your NID verification in your account.</p>
+          <Link href="/account" className={buttonVariants({ size: "sm", className: "w-full" })}>
+            Verify NID in Account
+          </Link>
+        </div>
       ) : viewer.hasInquired ? (
         <p className="flex items-center gap-2 text-sm text-primary">
           <CheckCircle2 className="size-4" /> {t("alreadyInquired")}

@@ -9,6 +9,12 @@ export const create = mutation({
   args: { listingId: v.id("listings"), message: v.string(), contactPhone: v.string() },
   handler: async (ctx, { listingId, message, contactPhone }) => {
     const user = await requireUser(ctx);
+    if (user.role !== "admin" && user.verificationStatus !== "verified") {
+      throw new ConvexError({
+        code: "UNVERIFIED",
+        message: "NID verification required: Please complete your NID verification in your account to contact or inquire about properties.",
+      });
+    }
     const listing = await ctx.db.get(listingId);
     if (!listing || listing.status !== "active") throw new ConvexError({ code: "NOT_FOUND", message: "This listing is not available." });
     if (listing.sellerId === user._id) throw new ConvexError({ code: "INVALID", message: "You cannot inquire on your own listing." });
@@ -63,6 +69,7 @@ export const revealContact = query({
     if (!listing) return null;
     const isOwner = listing.sellerId === user._id || user.role === "admin";
     if (!isOwner) {
+      if (user.verificationStatus !== "verified") return null;
       const inquiry = await ctx.db
         .query("inquiries")
         .withIndex("by_buyer_listing", (q) => q.eq("buyerId", user._id).eq("listingId", listingId))
@@ -70,9 +77,12 @@ export const revealContact = query({
       if (!inquiry) return null;
     }
     const seller = await ctx.db.get(listing.sellerId);
+    const companyPhone = process.env.COMPANY_PHONE ?? seller?.phone ?? "+8801700000000";
+    const companyEmail = process.env.COMPANY_EMAIL ?? seller?.email ?? "contact@landnestbd.com";
     return {
-      phone: seller?.phone ?? null,
-      email: seller?.email ?? null,
+      phone: isOwner ? (seller?.phone ?? companyPhone) : companyPhone,
+      email: isOwner ? (seller?.email ?? companyEmail) : companyEmail,
+      companyName: "LandnestBD Verified Concierge",
       exactAddress: listing.exactAddress ?? null,
       plotNumber: listing.plotNumber ?? null,
       lat: listing.lat ?? null,

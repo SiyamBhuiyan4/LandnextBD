@@ -69,6 +69,9 @@ export default function AdminUsers() {
                   <p className="text-xs text-muted-foreground">
                     {u.email ?? u.phone ?? "—"} · {fmt.ago(u.createdAt)}
                   </p>
+                  {u.nidNumber && (
+                    <p className="text-xs font-mono font-medium text-primary">NID: {u.nidNumber}</p>
+                  )}
                 </td>
                 <td className="px-3 py-2.5">
                   <select className={sel} value={u.role} onChange={(e) => run(update({ id: u._id, role: e.target.value as Role }))}>

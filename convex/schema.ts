@@ -37,6 +37,7 @@ export default defineSchema({
     accountType: v.optional(vAccountType),
     companyName: v.optional(v.string()),
     bio: v.optional(v.string()),
+    nidNumber: v.optional(v.string()),
     banned: v.optional(v.boolean()),
     createdAt: v.optional(v.number()),
   })
