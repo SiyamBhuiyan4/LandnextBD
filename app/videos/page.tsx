@@ -1,13 +1,14 @@
 "use client";
 
 import { usePaginatedQuery, useQuery } from "convex/react";
+import Link from "next/link";
 import { PlayCircle, Wifi } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { LandTypeIcons } from "@/components/icons";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { VideoThumb } from "@/components/video/video-card";
 import { VideoGalleryDialog } from "@/components/video/video-gallery";
 import { LAND_TYPES, type LandType } from "@/lib/constants";
@@ -85,7 +86,17 @@ export default function VideosPage() {
         ))}
         {status === "LoadingFirstPage" && Array.from({ length: 8 }, (_, i) => <div key={i} className="aspect-video animate-pulse rounded-xl bg-muted" />)}
       </div>
-      {status === "Exhausted" && results.length === 0 && <p className="mt-6 rounded-3xl border border-dashed bg-surface p-12 text-center text-sm text-muted-foreground">{t("noVideos")}</p>}
+      {status === "Exhausted" && results.length === 0 && (
+        <div className="mt-6 grid place-items-center rounded-3xl border border-dashed bg-surface px-6 py-16 text-center">
+          <span className="grid size-16 place-items-center rounded-2xl bg-card text-primary shadow-elev-1">
+            <PlayCircle className="size-8" aria-hidden />
+          </span>
+          <p className="mt-4 max-w-sm text-sm text-muted-foreground">{t("noVideos")}</p>
+          <Link href="/browse" className={cn(buttonVariants({ size: "lg" }), "mt-6 h-11 rounded-xl")}>
+            {tb("title")}
+          </Link>
+        </div>
+      )}
       <div ref={sentinel} className="h-8" />
       {status === "CanLoadMore" && (
         <div className="flex justify-center">

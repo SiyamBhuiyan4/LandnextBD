@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { BellRing, Search, Trash2 } from "lucide-react";
+import { BellRing, Heart, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
@@ -36,7 +36,16 @@ export default function SavedPage() {
 
       <section className="mt-6">
         <h2 className="mb-3 font-heading text-lg font-semibold">{t("searches")}</h2>
-        {searches?.length === 0 && <p className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">{t("noSearches")}</p>}
+        {searches === undefined && <div className="h-28 animate-pulse rounded-2xl bg-muted sm:w-1/2 lg:w-1/3" />}
+        {searches?.length === 0 && (
+          <div className="rounded-2xl border border-dashed p-8 text-center">
+            <BellRing className="mx-auto size-8 text-muted-foreground" aria-hidden />
+            <p className="mt-3 text-sm text-muted-foreground">{t("noSearches")}</p>
+            <Link href="/browse" className={buttonVariants({ variant: "outline", size: "sm", className: "mt-4" })}>
+              <Search /> {tb("title")}
+            </Link>
+          </div>
+        )}
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {searches?.map((s) => (
             <li key={s._id} className="flex items-start gap-3 rounded-2xl border bg-card p-4 shadow-soft">
@@ -60,7 +69,15 @@ export default function SavedPage() {
 
       <section className="mt-10">
         <h2 className="mb-3 font-heading text-lg font-semibold">{t("listings")}</h2>
-        {listings?.length === 0 && <p className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">{t("noListings")}</p>}
+        {listings?.length === 0 && (
+          <div className="rounded-2xl border border-dashed p-8 text-center">
+            <Heart className="mx-auto size-8 text-muted-foreground" aria-hidden />
+            <p className="mt-3 text-sm text-muted-foreground">{t("noListings")}</p>
+            <Link href="/browse" className={buttonVariants({ size: "sm", className: "mt-4" })}>
+              <Search /> {tb("title")}
+            </Link>
+          </div>
+        )}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {listings === undefined ? Array.from({ length: 4 }, (_, i) => <ListingCardSkeleton key={i} />) : listings.map((l) => <ListingCard key={l._id} l={l} saved />)}
         </div>
