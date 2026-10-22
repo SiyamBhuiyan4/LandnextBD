@@ -387,7 +387,7 @@ export function VideoPlayer({
             <Gauge className="mr-1 size-3.5" /> {speed}×
           </button>
           {levels.length > 1 && (
-            <button type="button" className={btn} onClick={() => setMenu(menu === "quality" ? null : "quality")} aria-label="Quality" aria-expanded={menu === "quality"}>
+            <button type="button" className={btn} onClick={() => setMenu(menu === "quality" ? null : "quality")} aria-label={t("quality")} aria-expanded={menu === "quality"}>
               <Settings2 className="size-4" />
             </button>
           )}

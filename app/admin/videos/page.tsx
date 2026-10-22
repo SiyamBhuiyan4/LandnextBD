@@ -20,8 +20,8 @@ export default function AdminVideos() {
     <div className="space-y-4">
       <div className="flex gap-1.5">
         {(["pending", "approved", "rejected"] as const).map((s) => (
-          <button key={s} type="button" aria-pressed={m === s} onClick={() => setM(s)} className={cn("rounded-full border px-3 py-1.5 text-xs font-medium capitalize", m === s ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted")}>
-            {s}
+          <button key={s} type="button" aria-pressed={m === s} onClick={() => setM(s)} className={cn("rounded-full border px-3 py-1.5 text-xs font-medium", m === s ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted")}>
+            {t(`moderation.${s}`)}
           </button>
         ))}
       </div>

@@ -15,6 +15,8 @@ import { CompassIcon, LandTypeIcons, RoadIcon } from "@/components/icons";
 import { useCompare } from "@/components/providers";
 import { useFmt } from "@/hooks/use-fmt";
 import { errorMessage } from "@/lib/client";
+import { areaLabel, districtName } from "@/lib/places";
+import type { SizeUnit } from "@/lib/units";
 import { listingHref } from "@/lib/urls";
 import { cn } from "@/lib/utils";
 
@@ -105,10 +107,14 @@ export function ListingCard({
   const Icon = LandTypeIcons[l.landType];
   const href = listingHref(l);
   const list = layout === "list";
+  const tu = useTranslations("units");
+  // Price per unit in the unit the seller used (katha for sqft listings, decimal for shotangsho).
+  const perUnit: SizeUnit = l.sizeUnit === "sqft" ? "katha" : l.sizeUnit === "shotangsho" ? "decimal" : l.sizeUnit;
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 12 }}
+      // above-the-fold (priority) cards render visible straight from the server so the LCP image isn't hidden
+      initial={priority ? false : { opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={reduce ? { duration: 0 } : { duration: 0.35, ease: "easeOut" }}
@@ -174,7 +180,7 @@ export function ListingCard({
           {l.negotiable && <span className="shrink-0 text-[11px] font-medium text-muted-foreground">{tc("negotiable")}</span>}
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {fmt.perUnit(l.price, l.sizeSqft, "katha")} / {fmt.locale === "bn" ? "কাঠা" : "katha"}
+          {fmt.perUnit(l.price, l.sizeSqft, perUnit)} / {tu(perUnit)}
         </p>
         <h3 className={cn("mt-2.5 line-clamp-2 font-heading text-[15px] leading-snug font-semibold", list && "sm:text-base")}>
           <Link href={href} className="after:absolute after:inset-0 after:z-0 focus:outline-none">
@@ -182,7 +188,9 @@ export function ListingCard({
           </Link>
         </h3>
         <p className="mt-1.5 flex items-center gap-1 text-sm text-muted-foreground">
-          <MapPin className="size-3.5 shrink-0 text-primary" aria-hidden /> <span className="truncate">{l.areaName}, {l.district}</span>
+          <MapPin className="size-3.5 shrink-0 text-primary" aria-hidden /> <span className="truncate">
+            {areaLabel(l, fmt.locale)}, {districtName(l.district, fmt.locale)}
+          </span>
         </p>
         <div className="mt-3 mb-3.5 flex flex-wrap items-center gap-1.5 text-xs">
           <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 font-medium text-secondary-foreground">
@@ -198,12 +206,13 @@ export function ListingCard({
           )}
           {l.roadWidthFt && (
             <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-muted-foreground">
-              <RoadIcon size={13} /> {fmt.digits(l.roadWidthFt)} ft
+              <RoadIcon size={13} /> {tc("feet", { n: fmt.digits(l.roadWidthFt) })}
             </span>
           )}
         </div>
         <div className="mt-auto flex items-center justify-between gap-2 border-t border-dashed pt-3">
-          <span className="min-w-0 truncate text-[11px] text-muted-foreground">
+          {/* relative time differs between the server render and hydration by design */}
+          <span className="min-w-0 truncate text-[11px] text-muted-foreground" suppressHydrationWarning>
             {tli("postedAgo", { time: fmt.ago(l.publishedAt) })} · {ts(l.sellerType)}
           </span>
           <CompareToggle id={l._id} className="relative z-10 shrink-0" />

@@ -1,9 +1,10 @@
 "use client";
 
-import { useMutation, usePreloadedQuery, useQuery, type Preloaded } from "convex/react";
-import { AlertTriangle, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, CircleDashed, Clock, Eye, FileCheck2, Flag, Hash, Heart, Loader2, MapPin, MessageCircle, Phone, PlayCircle, Ruler, Share2, Video } from "lucide-react";
+import { useConvexAuth, useMutation, usePreloadedQuery, useQuery, type Preloaded } from "convex/react";
+import { AlertTriangle, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, CircleDashed, Clock, Copy, Eye, FileCheck2, Flag, Hash, Heart, Link2, Loader2, Mail, MapPin, Megaphone, MessageCircle, Pencil, Phone, PlayCircle, Ruler, Share2, ShieldCheck, Video } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -19,6 +20,7 @@ import { VideoThumb } from "@/components/video/video-card";
 import { useFmt } from "@/hooks/use-fmt";
 import { errorMessage, sessionId } from "@/lib/client";
 import { DOCUMENT_TYPES, REPORT_REASONS, type ReportReason } from "@/lib/constants";
+import { districtName } from "@/lib/places";
 import { allUnits } from "@/lib/units";
 import { landTypeToSlug } from "@/lib/urls";
 import { cn } from "@/lib/utils";
@@ -27,14 +29,14 @@ const MiniMap = dynamic(() => import("@/components/listings/mini-map"), { ssr: f
 
 function Fact({ icon, label, value, muted }: { icon: React.ReactNode; label: string; value: React.ReactNode; muted?: boolean }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border bg-card p-3 sm:p-3.5">
-      <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-secondary text-primary" aria-hidden>
-        {icon}
-      </span>
-      <div className="min-w-0">
-        <dt className="text-xs text-muted-foreground">{label}</dt>
-        <dd className={cn("truncate text-sm font-semibold sm:text-[15px]", muted && "font-medium text-muted-foreground")}>{value}</dd>
-      </div>
+    <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 rounded-xl border bg-card p-3 sm:p-3.5">
+      <dt className="contents">
+        <span className="row-span-2 grid size-10 shrink-0 place-items-center rounded-lg bg-secondary text-primary" aria-hidden>
+          {icon}
+        </span>
+        <span className="self-end text-xs text-muted-foreground">{label}</span>
+      </dt>
+      <dd className={cn("col-start-2 line-clamp-2 self-start text-sm leading-snug break-words font-semibold sm:text-[15px]", muted && "font-medium text-muted-foreground")}>{value}</dd>
     </div>
   );
 }
@@ -94,6 +96,9 @@ export function ListingDetail({ preloaded }: { preloaded: Preloaded<typeof api.l
   const [exact, setExact] = useState<{ lat: number; lng: number } | null>(null);
   const [revealed, setRevealed] = useState<{ phone: string | null; plot: string | null } | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const { isAuthenticated } = useConvexAuth();
+  const router = useRouter();
   const contactRef = useRef<HTMLDivElement>(null);
   const [barHidden, setBarHidden] = useState(false);
 
@@ -132,19 +137,17 @@ export function ListingDetail({ preloaded }: { preloaded: Preloaded<typeof api.l
   const playable = (videos ?? []).filter((v) => v.status === "ready");
   const processing = (videos ?? []).filter((v) => v.status === "processing");
   const saved = savedIds ? savedIds.includes(l._id) : l.viewer.saved;
-  const share = async () => {
-    const url = location.href;
-    try {
-      if (navigator.share) await navigator.share({ title: l.title, url });
-      else {
-        await navigator.clipboard.writeText(url);
-        toast.success(tc("copied"));
-      }
-    } catch {
-      /* cancelled */
+  const openReport = () => {
+    if (!isAuthenticated) {
+      toast.info(td2("signInToReport"));
+      router.push(`/signin?next=${encodeURIComponent(location.pathname)}`);
+      return;
     }
+    setReportOpen(true);
   };
   const areaLabel = locale === "bn" && l.areaNameBn ? l.areaNameBn : l.areaName;
+  const district = districtName(l.district, locale);
+  const adId = l._id.slice(-12, -4).toUpperCase();
   const unitKatha = locale === "bn" ? "কাঠা" : "katha";
   const unitDecimal = locale === "bn" ? "শতাংশ" : "decimal";
   const docsProvided = DOCUMENT_TYPES.filter((type) => l.documents.some((d) => d.type === type)).length;
@@ -159,11 +162,11 @@ export function ListingDetail({ preloaded }: { preloaded: Preloaded<typeof api.l
   const actions = (
     <div className="flex items-center gap-2">
       <SaveButton listingId={l._id} saved={saved} className="size-10 border shadow-none" />
-      <Button variant="outline" size="icon" className="size-10 rounded-full" onClick={share} aria-label={tc("share")}>
+      <Button variant="outline" size="icon" className="size-10 rounded-full" onClick={() => setShareOpen(true)} aria-label={tc("share")}>
         <Share2 />
       </Button>
       <CompareToggle id={l._id} className="h-10 px-3.5 text-sm" />
-      <Button variant="ghost" size="icon" className="size-10 rounded-full text-muted-foreground" onClick={() => setReportOpen(true)} aria-label={tc("report")}>
+      <Button variant="ghost" size="icon" className="size-10 rounded-full text-muted-foreground" onClick={openReport} aria-label={tc("report")}>
         <Flag />
       </Button>
     </div>
@@ -181,9 +184,15 @@ export function ListingDetail({ preloaded }: { preloaded: Preloaded<typeof api.l
         </div>
       )}
       {l.status === "sold" && <div className="mb-4 rounded-xl bg-foreground px-4 py-3 text-sm font-semibold text-background">{t("soldBanner")}</div>}
+      {l.status === "expired" && !l.viewer.isOwner && (
+        <div role="status" className="mb-4 rounded-xl bg-muted px-4 py-3 text-sm font-semibold text-foreground">
+          {td2("expiredBanner")}
+        </div>
+      )}
+      {l.viewer.isOwner && <OwnerTools l={l} />}
 
-      <nav aria-label={td2("breadcrumb")} className="scrollbar-none mb-3 overflow-x-auto">
-        <ol className="flex items-center gap-1 text-xs whitespace-nowrap text-muted-foreground sm:text-sm">
+      <nav aria-label={td2("breadcrumb")} className="mb-3">
+        <ol className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-xs text-muted-foreground sm:text-sm">
           <li>
             <Link href="/browse" className="hover:text-foreground">
               {tb("allBangladesh")}
@@ -194,7 +203,7 @@ export function ListingDetail({ preloaded }: { preloaded: Preloaded<typeof api.l
           </li>
           <li>
             <Link href={`/browse?district=${encodeURIComponent(l.district)}`} className="hover:text-foreground">
-              {l.district}
+              {district}
             </Link>
           </li>
           <li aria-hidden>
@@ -238,8 +247,8 @@ export function ListingDetail({ preloaded }: { preloaded: Preloaded<typeof api.l
             <MapPin className="mt-0.5 size-4 shrink-0" aria-hidden />
             <span>
               {l.sectorBlock ? `${l.sectorBlock}, ` : ""}
-              {areaLabel}, {l.upazila && l.upazila !== l.areaName ? `${l.upazila}, ` : ""}
-              {l.district}
+              {areaLabel}, {l.upazila && l.upazila !== l.areaName && locale !== "bn" ? `${l.upazila}, ` : ""}
+              {district}
             </span>
           </p>
         </div>
@@ -268,7 +277,8 @@ export function ListingDetail({ preloaded }: { preloaded: Preloaded<typeof api.l
             </p>
             <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1">
-                <Clock className="size-3.5" aria-hidden /> {t("postedAgo", { time: fmt.ago(l.publishedAt) })}
+                <Clock className="size-3.5" aria-hidden />{" "}
+                <span suppressHydrationWarning>{t("postedAgo", { time: fmt.ago(l.publishedAt) })}</span>
               </span>
               <span className="inline-flex items-center gap-1">
                 <Eye className="size-3.5" aria-hidden /> {tc("views", { count: fmt.digits(l.viewCount) })}
@@ -483,6 +493,34 @@ export function ListingDetail({ preloaded }: { preloaded: Preloaded<typeof api.l
               </dd>
             </div>
           </dl>
+          <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border bg-card px-3 py-2 text-xs">
+            <span className="text-muted-foreground">
+              {td2("adId")}: <span className="font-mono font-semibold text-foreground">{adId}</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(adId);
+                    toast.success(td2("adIdCopied"));
+                  } catch {
+                    /* clipboard blocked */
+                  }
+                }}
+                className="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label={td2("copyAdId")}
+              >
+                <Copy className="size-3.5" />
+              </button>
+              {!l.viewer.isOwner && (
+                <button type="button" onClick={openReport} className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 font-medium text-muted-foreground hover:bg-muted hover:text-destructive">
+                  <Flag className="size-3.5" aria-hidden /> {tc("report")}
+                </button>
+              )}
+            </span>
+          </div>
+          <SafetyTips />
         </aside>
       </div>
 
@@ -549,7 +587,166 @@ export function ListingDetail({ preloaded }: { preloaded: Preloaded<typeof api.l
       )}
 
       <ReportDialog listingId={l._id} open={reportOpen} onOpenChange={setReportOpen} />
+      <ShareDialog title={l.title} open={shareOpen} onOpenChange={setShareOpen} />
     </div>
+  );
+}
+
+function SafetyTips() {
+  const t = useTranslations("listingDetail");
+  const tl = useTranslations("listing");
+  const tips = ["safety1", "safety2", "safety3", "safety4", "safety5"] as const;
+  return (
+    <section aria-labelledby="safety" className="mt-3 rounded-2xl border border-warm/40 bg-accent/40 p-4 text-sm text-accent-foreground">
+      <h2 id="safety" className="flex items-center gap-2 font-heading text-base font-semibold">
+        <ShieldCheck className="size-4.5 text-primary" aria-hidden /> {t("safetyTitle")}
+      </h2>
+      <ul className="mt-2.5 space-y-1.5">
+        {tips.map((k) => (
+          <li key={k} className="flex gap-2 text-[13px] leading-snug">
+            <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden /> {t(k)}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-3 border-t border-warm/30 pt-2.5 text-xs text-muted-foreground">{tl("disclaimer")}</p>
+    </section>
+  );
+}
+
+type DetailListing = NonNullable<ReturnType<typeof usePreloadedQuery<typeof api.listings.getBySlug>>>;
+
+/** Owner-only shortcuts on their own ad (bikroy-style "edit / promote / mark sold" live in the dashboard). */
+function OwnerTools({ l }: { l: DetailListing }) {
+  const t = useTranslations("listingDetail");
+  const tst = useTranslations("status");
+  const fmt = useFmt();
+  const promote = useMutation(api.listings.requestPromotion);
+  const [busy, setBusy] = useState(false);
+  const editable = l.status !== "sold" && l.status !== "expired";
+  const canPromote = l.status === "active" && !l.isFeatured && !l.promotionRequested;
+  return (
+    <div className="mb-4 flex flex-col gap-3 rounded-2xl border bg-card p-3.5 shadow-soft sm:flex-row sm:items-center sm:justify-between">
+      <div className="text-sm">
+        <p className="font-semibold">{t("ownerTools")}</p>
+        <p className="text-xs text-muted-foreground">
+          {tst(l.status)}
+          {l.expiresAt ? ` · ${t("expiresOn", { date: fmt.date(l.expiresAt) })}` : ""}
+          {l.promotionRequested && !l.isFeatured ? ` · ${t("promotionRequested")}` : ""}
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {editable && (
+          <Link href={`/dashboard/listings/${l._id}/edit`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+            <Pencil /> {t("editAd")}
+          </Link>
+        )}
+        <Link href="/dashboard/inquiries" className={buttonVariants({ variant: "outline", size: "sm" })}>
+          <MessageCircle /> {t("viewInquiries", { count: fmt.digits(l.inquiryCount) })}
+        </Link>
+        {canPromote && (
+          <Button
+            size="sm"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await promote({ id: l._id });
+                toast.success(t("promotionRequested"));
+              } catch (err) {
+                toast.error(errorMessage(err));
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            {busy ? <Loader2 className="animate-spin" /> : <Megaphone />} {t("promoteAd")}
+          </Button>
+        )}
+        <Link href="/dashboard/listings" className={buttonVariants({ variant: "ghost", size: "sm" })}>
+          {t("myListings")}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function ShareDialog({ title, open, onOpenChange }: { title: string; open: boolean; onOpenChange: (o: boolean) => void }) {
+  const t = useTranslations("listingDetail");
+  const tc = useTranslations("common");
+  const [url, setUrl] = useState("");
+  useEffect(() => {
+    if (open) setUrl(location.origin + location.pathname);
+  }, [open]);
+  const text = `${title} — ${url}`;
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success(tc("copied"));
+      onOpenChange(false);
+    } catch {
+      /* clipboard blocked */
+    }
+  };
+  const canNativeShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+  const item = "flex flex-col items-center gap-1.5 rounded-xl border bg-card px-2 py-3 text-xs font-medium transition hover:bg-muted";
+  const icon = "grid size-10 place-items-center rounded-full";
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t("shareTitle")}</DialogTitle>
+        </DialogHeader>
+        <div className="grid grid-cols-4 gap-2">
+          <a className={item} href={`https://wa.me/?text=${encodeURIComponent(text)}`} target="_blank" rel="noopener noreferrer">
+            <span className={cn(icon, "bg-[#25D366] text-white")}>
+              <MessageCircle className="size-5" />
+            </span>
+            {t("whatsapp")}
+          </a>
+          <a className={item} href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`} target="_blank" rel="noopener noreferrer">
+            <span className={cn(icon, "bg-[#1877F2] text-base font-bold text-white")} aria-hidden>
+              f
+            </span>
+            {t("shareFacebook")}
+          </a>
+          <a className={item} href={`mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(text)}`}>
+            <span className={cn(icon, "bg-secondary text-primary")}>
+              <Mail className="size-5" />
+            </span>
+            {t("shareEmail")}
+          </a>
+          <button type="button" className={item} onClick={copy}>
+            <span className={cn(icon, "bg-secondary text-primary")}>
+              <Link2 className="size-5" />
+            </span>
+            {t("copyLink")}
+          </button>
+        </div>
+        <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2">
+          <input readOnly value={url} aria-label={t("copyLink")} onFocus={(e) => e.currentTarget.select()} className="min-w-0 flex-1 bg-transparent font-mono text-xs outline-none" />
+          <Button size="sm" variant="outline" onClick={copy}>
+            <Copy /> {t("copyLink")}
+          </Button>
+        </div>
+        {canNativeShare && (
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={async () => {
+                try {
+                  await navigator.share({ title, url });
+                  onOpenChange(false);
+                } catch {
+                  /* cancelled */
+                }
+              }}
+            >
+              <Share2 /> {t("shareMore")}
+            </Button>
+          </DialogFooter>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 

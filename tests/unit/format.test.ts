@@ -62,6 +62,11 @@ describe("URL filters", () => {
     expect(f).toEqual({ utilities: ["gas"] });
   });
 
+  it("parses posted-by, posted-within and the oldest sort", () => {
+    expect(filtersFromSearchParams(new URLSearchParams("sellerType=broker&postedWithinDays=7&sort=oldest"))).toEqual({ sellerType: "broker", postedWithinDays: 7, sort: "oldest" });
+    expect(filtersFromSearchParams(new URLSearchParams("sellerType=alien&postedWithinDays=3"))).toEqual({});
+  });
+
   it("builds clean listing URLs", () => {
     expect(listingHref({ areaSlug: "purbachal", landType: "mixed_use", slug: "abc" })).toBe("/land/purbachal/mixed-use/abc");
     expect(slugToLandType("mixed-use")).toBe("mixed_use");

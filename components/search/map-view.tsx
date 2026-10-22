@@ -9,7 +9,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import { api } from "@/convex/_generated/api";
 import { useFmt } from "@/hooks/use-fmt";
-import type { LandType } from "@/lib/constants";
+import type { Id } from "@/convex/_generated/dataModel";
+import type { ListingFilters } from "@/lib/constants";
 import { listingHref } from "@/lib/urls";
 import { cn } from "@/lib/utils";
 
@@ -40,15 +41,12 @@ function FlyTo({ center }: { center: [number, number] | null }) {
 export default function MapView({
   center,
   zoom = 11,
-  landType,
-  minPrice,
-  maxPrice,
+  filters,
 }: {
   center: [number, number];
   zoom?: number;
-  landType?: LandType;
-  minPrice?: number;
-  maxPrice?: number;
+  /** The browse filters (minus sort); every one of them also applies to the pins. */
+  filters: ListingFilters & { areaId?: Id<"areas"> };
 }) {
   const t = useTranslations("browse");
   const tl = useTranslations("landType");
@@ -64,7 +62,7 @@ export default function MapView({
     return () => clearTimeout(h);
   }, [bounds]);
 
-  const pins = useQuery(api.listings.inBounds, debounced ? { ...debounced, landType, minPrice, maxPrice } : "skip");
+  const pins = useQuery(api.listings.inBounds, debounced ? { ...debounced, filters } : "skip");
 
   const icon = useMemo(
     () => (label: string, active: boolean) =>

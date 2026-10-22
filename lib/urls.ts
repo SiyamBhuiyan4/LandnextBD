@@ -1,4 +1,4 @@
-import { FACILITIES, FACINGS, LAND_TYPES, SORTS, UTILITIES, type LandType, type ListingFilters } from "./constants";
+import { ACCOUNT_TYPES, FACILITIES, FACINGS, LAND_TYPES, POSTED_WITHIN_DAYS, SORTS, UTILITIES, type LandType, type ListingFilters } from "./constants";
 
 /** mixed_use <-> mixed-use for clean URLs. */
 export const landTypeToSlug = (t: LandType) => t.replace(/_/g, "-");
@@ -36,6 +36,10 @@ export function filtersFromSearchParams(sp: URLSearchParams | Record<string, str
   if (lt && (LAND_TYPES as readonly string[]).includes(lt)) f.landType = lt as LandType;
   const facing = get("facing");
   if (facing && (FACINGS as readonly string[]).includes(facing)) f.facing = facing as ListingFilters["facing"];
+  const seller = get("sellerType");
+  if (seller && (ACCOUNT_TYPES as readonly string[]).includes(seller)) f.sellerType = seller as ListingFilters["sellerType"];
+  const within = Number(get("postedWithinDays"));
+  if ((POSTED_WITHIN_DAYS as readonly number[]).includes(within)) f.postedWithinDays = within;
   const sort = get("sort");
   if (sort && (SORTS as readonly string[]).includes(sort)) f.sort = sort as ListingFilters["sort"];
   for (const k of NUM_KEYS) {

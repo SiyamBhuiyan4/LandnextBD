@@ -19,7 +19,10 @@ export default function AdminUsers() {
   const fmt = useFmt();
   const [role, setRole] = useState<Role | undefined>();
   const [verification, setVerification] = useState<Verif | undefined>();
-  const rows = useQuery(api.admin.users, { role, verification });
+  const [q, setQ] = useState("");
+  const all = useQuery(api.admin.users, { role, verification });
+  const needle = q.trim().toLowerCase();
+  const rows = needle ? all?.filter((u) => [u.name, u.email, u.phone].some((x) => x?.toLowerCase().includes(needle))) : all;
   const update = useMutation(api.admin.updateUser);
   const run = (p: Promise<unknown>) => p.catch((e) => toast.error(errorMessage(e)));
   const sel = "h-8 rounded-md border bg-background px-2 text-xs";
@@ -27,6 +30,7 @@ export default function AdminUsers() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
+        <input type="search" className={`${sel} w-full sm:w-64`} placeholder={t("searchUsers")} aria-label={t("searchUsers")} value={q} onChange={(e) => setQ(e.target.value)} />
         <select className={sel} value={role ?? ""} onChange={(e) => setRole((e.target.value || undefined) as Role | undefined)} aria-label={ta("role")}>
           <option value="">{ta("role")}: —</option>
           {ROLES.map((r) => (
@@ -58,7 +62,10 @@ export default function AdminUsers() {
             {rows?.map((u) => (
               <tr key={u._id} className="border-b last:border-0">
                 <td className="px-4 py-2.5">
-                  <p className="font-medium">{u.name ?? "—"}</p>
+                  <p className="font-medium">
+                    {u.name ?? "—"}
+                    {u.banned && <span className="ml-2 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] text-destructive">{t("banned")}</span>}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {u.email ?? u.phone ?? "—"} · {fmt.ago(u.createdAt)}
                   </p>
@@ -82,7 +89,7 @@ export default function AdminUsers() {
                   </select>
                 </td>
                 <td className="px-3 py-2.5 text-right">
-                  <Button size="xs" variant={u.banned ? "outline" : "destructive"} onClick={() => run(update({ id: u._id, banned: !u.banned }))}>
+                  <Button size="xs" className={u.banned ? undefined : "text-red-700 dark:text-destructive"} variant={u.banned ? "outline" : "destructive"} onClick={() => (u.banned || confirm(t("confirmBan", { name: u.name ?? u.email ?? u.phone ?? "" }))) && run(update({ id: u._id, banned: !u.banned }))}>
                     {u.banned ? t("unban") : t("ban")}
                   </Button>
                 </td>

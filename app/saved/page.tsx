@@ -50,7 +50,7 @@ export default function SavedPage() {
                   <Search /> {t("run")}
                 </Link>
               </div>
-              <Button variant="ghost" size="icon-sm" aria-label="Delete" onClick={() => remove({ id: s._id })}>
+              <Button variant="ghost" size="icon-sm" aria-label={t("delete")} onClick={() => remove({ id: s._id })}>
                 <Trash2 />
               </Button>
             </li>

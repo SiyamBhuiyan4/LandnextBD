@@ -93,6 +93,8 @@ export const mine = query({
     return Promise.all(
       rows.map(async (i) => {
         const l = await ctx.db.get(i.listingId);
+        // Same rule as revealContact: a buyer who inquired may see the seller's number.
+        const seller = l ? await ctx.db.get(l.sellerId) : null;
         return {
           _id: i._id,
           message: i.message,
@@ -100,6 +102,8 @@ export const mine = query({
           createdAt: i.createdAt,
           repliedAt: i.repliedAt,
           listing: l ? await listingCard(ctx, l) : null,
+          sellerName: seller ? (seller.companyName ?? seller.name ?? null) : null,
+          sellerPhone: seller?.phone ?? null,
         };
       }),
     );

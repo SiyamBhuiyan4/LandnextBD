@@ -55,7 +55,8 @@ const serveMedia = httpAction(async (ctx, req) => {
           path = await resolveFilePath(m.tgFileId);
           upstream = path ? await fetch(fileDownloadUrl(path), { headers: range ? { Range: range } : {} }) : null;
         }
-        if (path && upstream?.ok) await ctx.runMutation(internal.media.cacheFilePath, { id: m._id, path });
+        // Write only when the path changed: a mutation per request would cost a function call each time.
+        if (path && upstream?.ok && path !== m.tgFilePath) await ctx.runMutation(internal.media.cacheFilePath, { id: m._id, path });
       }
     } else if (m.storageUrl) {
       upstream = await fetch(m.storageUrl, { headers: range ? { Range: range } : {} });

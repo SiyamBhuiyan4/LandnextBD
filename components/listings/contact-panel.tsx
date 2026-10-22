@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { BadgeCheck, CheckCircle2, Loader2, MessageCircle, Phone, ShieldAlert } from "lucide-react";
+import { BadgeCheck, CheckCircle2, Loader2, MessageCircle, Phone } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -17,6 +17,7 @@ import { errorMessage } from "@/lib/client";
 export function whatsappHref(phone: string, text?: string) {
   let d = phone.replace(/\D/g, "");
   if (d.startsWith("0")) d = `88${d}`;
+  else if (d.length === 10 && d.startsWith("1")) d = `880${d}`;
   return `https://wa.me/${d}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
 }
 
@@ -29,11 +30,13 @@ type Seller = {
   maskedPhone: string | null;
   memberSince: number;
   responseRate: number | null;
+  activeListings?: number;
 };
 
 export function SellerCard({ seller }: { seller: Seller }) {
   const t = useTranslations("listing");
   const ts = useTranslations("sellerType");
+  const td = useTranslations("listingDetail");
   const fmt = useFmt();
   return (
     <Link href={`/seller/${seller._id}`} className="flex items-center gap-3 rounded-xl p-1 transition hover:bg-muted">
@@ -41,12 +44,15 @@ export function SellerCard({ seller }: { seller: Seller }) {
       <span className="min-w-0">
         <span className="flex items-center gap-1 font-semibold">
           <span className="truncate">{seller.companyName ?? seller.name}</span>
-          {seller.verificationStatus === "verified" && <BadgeCheck className="size-4 shrink-0 text-primary" aria-label="Verified seller" />}
+          {seller.verificationStatus === "verified" && <BadgeCheck className="size-4 shrink-0 text-primary" aria-label={t("verifiedSeller")} />}
         </span>
         <span className="block text-xs text-muted-foreground">
           {ts(seller.accountType)} · {t("memberSince", { date: fmt.date(seller.memberSince) })}
         </span>
-        <span className="block text-xs text-muted-foreground">{seller.responseRate !== null ? t("responseRate", { rate: fmt.digits(seller.responseRate) }) : t("noResponseData")}</span>
+        <span className="block text-xs text-muted-foreground">
+          {seller.responseRate !== null ? t("responseRate", { rate: fmt.digits(seller.responseRate) }) : t("noResponseData")}
+          {seller.activeListings !== undefined && ` · ${td("sellerListings", { count: seller.activeListings, n: fmt.digits(seller.activeListings) })}`}
+        </span>
       </span>
     </Link>
   );
@@ -88,6 +94,9 @@ export function ContactPanel({
   }, [contact]);
 
   if (viewer.isOwner) return null;
+  if (!active && !(viewer.signedIn && viewer.hasInquired)) {
+    return <p className="rounded-xl border border-dashed px-3 py-2.5 text-sm text-muted-foreground">{td("unavailableContact")}</p>;
+  }
 
   return (
     <div className="space-y-3">
@@ -125,7 +134,7 @@ export function ContactPanel({
         </p>
       )}
 
-      {!viewer.signedIn ? (
+      {!active ? null : !viewer.signedIn ? (
         <Link href={`/signin?next=${encodeURIComponent(pathname)}`} className={buttonVariants({ className: "w-full" })}>
           {t("signInToContact")}
         </Link>
@@ -133,7 +142,7 @@ export function ContactPanel({
         <p className="flex items-center gap-2 text-sm text-primary">
           <CheckCircle2 className="size-4" /> {t("alreadyInquired")}
         </p>
-      ) : active ? (
+      ) : (
         <form
           className="space-y-2.5"
           onSubmit={async (e) => {
@@ -157,6 +166,7 @@ export function ContactPanel({
           <textarea
             id="inq-msg"
             rows={3}
+            minLength={5}
             maxLength={1000}
             value={msg}
             onChange={(e) => setMsg(e.target.value)}
@@ -180,10 +190,7 @@ export function ContactPanel({
             {busy && <Loader2 className="animate-spin" />} {t("sendInquiry")}
           </Button>
         </form>
-      ) : null}
-      <p className="flex gap-2 rounded-lg border border-warm/40 bg-accent/50 p-2.5 text-xs text-accent-foreground">
-        <ShieldAlert className="size-4 shrink-0" aria-hidden /> {t("disclaimer")}
-      </p>
+      )}
     </div>
   );
 }

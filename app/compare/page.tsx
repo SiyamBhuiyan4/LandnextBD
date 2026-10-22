@@ -12,6 +12,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useCompare } from "@/components/providers";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useFmt } from "@/hooks/use-fmt";
+import { areaLabel, districtName } from "@/lib/places";
 import { pricePerUnit } from "@/lib/units";
 import { listingHref } from "@/lib/urls";
 import { cn } from "@/lib/utils";
@@ -57,10 +58,10 @@ function CompareInner() {
         return <span className={v === cheapestPerKatha && rows.length > 1 ? "font-semibold text-primary" : ""}>{fmt.price(v)}</span>;
       },
     },
-    { label: t("row.area"), render: (r) => `${r.areaName}, ${r.district}` },
+    { label: t("row.area"), render: (r) => `${areaLabel(r, fmt.locale)}, ${districtName(r.district, fmt.locale)}` },
     { label: t("row.type"), render: (r) => tl(r.landType) },
     { label: t("row.facing"), render: (r) => (r.facing ? tf(r.facing) : <Minus className="size-4 text-muted-foreground" />) },
-    { label: t("row.road"), render: (r) => (r.roadWidthFt ? `${fmt.digits(r.roadWidthFt)} ft` : <Minus className="size-4 text-muted-foreground" />) },
+    { label: t("row.road"), render: (r) => (r.roadWidthFt ? tc("feet", { n: fmt.digits(r.roadWidthFt) }) : <Minus className="size-4 text-muted-foreground" />) },
     { label: t("row.utilities"), render: (r) => r.utilities.map((u) => tu(u)).join(", ") || "—" },
     { label: t("row.facilities"), render: (r) => r.nearbyFacilities.map((f) => tfa(f)).join(", ") || "—" },
     { label: t("row.documents"), render: (r) => fmt.digits(r.documents.filter((d) => d.verified).length) },
@@ -90,7 +91,7 @@ function CompareInner() {
                 <Link href={listingHref(r)} className="mt-2 line-clamp-2 font-semibold hover:underline">
                   {r.title}
                 </Link>
-                {r.isVerified && <BadgeCheck className="mt-1 size-4 text-primary" aria-label="Verified" />}
+                {r.isVerified && <BadgeCheck className="mt-1 size-4 text-primary" aria-label={tc("verified")} />}
               </th>
             ))}
           </tr>

@@ -38,7 +38,7 @@ export type Role = (typeof ROLES)[number];
 export const ACCOUNT_TYPES = ["owner", "broker", "company"] as const;
 export type AccountType = (typeof ACCOUNT_TYPES)[number];
 
-export const SORTS = ["newest", "price_asc", "price_desc", "size_desc", "views"] as const;
+export const SORTS = ["newest", "oldest", "price_asc", "price_desc", "size_desc", "views"] as const;
 export type SortKey = (typeof SORTS)[number];
 
 export const REPORT_REASONS = ["fake", "duplicate", "wrong_price", "sold", "scam", "offensive", "other"] as const;
@@ -61,6 +61,12 @@ export const SIZE_BUCKETS_KATHA: { min?: number; max?: number; key: string }[] =
   { key: "10_20", min: 10, max: 20 },
   { key: "over_20", min: 20 },
 ];
+
+/** "Posted within" choices (days) for the date filter. */
+export const POSTED_WITHIN_DAYS = [1, 7, 30] as const;
+
+/** Units offered in the size filter (values are converted to sqft for the URL/query). */
+export const SIZE_FILTER_UNITS = ["katha", "decimal", "bigha", "acre"] as const;
 
 export const PRICE_SLIDER_MAX = 50_000_000; // 5 crore
 export const SIZE_SLIDER_MAX_KATHA = 100;
@@ -100,6 +106,10 @@ export type ListingFilters = {
   verifiedOnly?: boolean;
   hasVideo?: boolean;
   negotiable?: boolean;
+  /** Posted by: owner / broker (agent) / developer company. */
+  sellerType?: AccountType;
+  /** Only listings published in the last N days. */
+  postedWithinDays?: number;
   utilities?: Utility[];
   facilities?: Facility[];
   sort?: SortKey;

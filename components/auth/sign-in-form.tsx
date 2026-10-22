@@ -50,7 +50,7 @@ export function SignInForm() {
 
   const sendCode = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (kind === "phone" && !normalizeBdPhone(target)) return toast.error(t("phoneLabel"));
+    if (kind === "phone" && !normalizeBdPhone(target)) return toast.error(t("invalidPhone"));
     setBusy(true);
     try {
       await signIn(provider, { [kind]: identifier });
@@ -59,7 +59,7 @@ export function SignInForm() {
       setResendAt(Date.now() + 30_000);
       setNow(Date.now());
     } catch {
-      toast.error("Could not send the code. Please try again.");
+      toast.error(t("sendFailed"));
     } finally {
       setBusy(false);
     }

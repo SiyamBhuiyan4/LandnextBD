@@ -2,7 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, mutation, type MutationCtx } from "./_generated/server";
-import { requireRole, SELLER_ROLES } from "./helpers";
+import { rateLimit, requireRole, SELLER_ROLES } from "./helpers";
 import { CONFIG } from "../lib/constants";
 import { hmacHex } from "../lib/signature";
 
@@ -36,7 +36,9 @@ export async function signedDocumentUrl(id: Id<"media">, ttlSec = 600) {
 export const generateUploadUrl = mutation({
   args: { kind: vKind },
   handler: async (ctx) => {
-    await requireRole(ctx, SELLER_ROLES);
+    const user = await requireRole(ctx, SELLER_ROLES);
+    // A 1 GB video needs ~55 URLs (parts + poster); this still stops storage abuse.
+    await rateLimit(ctx, `upload-url:${user._id}`, 400, 3600_000);
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -243,6 +245,8 @@ export async function claimMedia(ctx: MutationCtx, ids: Id<"media">[], userId: I
     if (alreadyOwned.has(id)) continue;
     const m = await ctx.db.get(id);
     if (!m || m.ownerId !== userId || m.attached) throw new ConvexError({ code: "INVALID", message: "One of the files was not uploaded by you." });
+    // Videos (and their posters) are attached through videos.registerUpload only.
+    if (m.kind !== "image" && m.kind !== "document") throw new ConvexError({ code: "INVALID", message: "Videos must be added in the video section." });
     await ctx.db.patch(id, { attached: true });
   }
 }
@@ -528,3 +532,54 @@ export const cleanupAbandoned = internalMutation({
   },
 });
 
+
+/**
+ * Cron: (1) deletes Convex storage files that no media row points at — slices
+ * of uploads that were never confirmed (tab closed, network lost) would
+ * otherwise stay in storage forever; (2) restarts multi-part pushes whose
+ * chain died (action crash/timeout) once their lease has expired.
+ */
+export const cleanupOrphanStorage = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let restarted = 0;
+    const pending = await ctx.db
+      .query("media")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .take(500);
+    for (const m of pending) {
+      if (!m.parts || !m.attached || m.attempts >= 8) continue;
+      if (Date.now() - m.createdAt < 10 * 60_000) continue;
+      if (m.pushLeaseAt && Date.now() - m.pushLeaseAt < LEASE_MS) continue;
+      if (!m.parts.some((p) => !p.tgFileId)) continue;
+      await ctx.scheduler.runAfter(restarted * 5000, internal.telegram.push, { mediaId: m._id });
+      restarted++;
+    }
+    // Without a Telegram channel storage is the permanent store: never sweep it.
+    if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID) return { deleted: 0, restarted };
+    const failed = await ctx.db
+      .query("media")
+      .withIndex("by_status", (q) => q.eq("status", "failed"))
+      .take(500);
+    const partRefs = new Set<string>();
+    for (const m of [...pending, ...failed]) for (const p of m.parts ?? []) if (p.storageId) partRefs.add(p.storageId);
+    const cutoff = Date.now() - 24 * 3600_000;
+    const files = await ctx.db.system
+      .query("_storage")
+      .withIndex("by_creation_time", (q) => q.lt("_creationTime", cutoff))
+      .order("desc")
+      .take(300);
+    let deleted = 0;
+    for (const f of files) {
+      if (partRefs.has(f._id)) continue;
+      const used = await ctx.db
+        .query("media")
+        .withIndex("by_storage", (q) => q.eq("storageId", f._id))
+        .first();
+      if (used) continue;
+      await ctx.storage.delete(f._id);
+      deleted++;
+    }
+    return { deleted, restarted };
+  },
+});

@@ -51,7 +51,15 @@ function PlayBadge({ duration, size = "md" }: { duration?: string; size?: "sm" |
   );
 }
 
-function Thumb({ item, sizes, priority, alt }: { item: MediaItem; sizes: string; priority?: boolean; alt: string }) {
+/** Matches the `sm:` breakpoint split between the mobile carousel and the desktop mosaic. */
+const MOBILE_MQ = "(max-width: 639.98px)";
+
+/**
+ * Item 0 is the hero in BOTH layouts (one is hidden by CSS). Both copies get the same `sizes`, so
+ * the browser resolves them to the same URL and downloads it once, whichever layout is showing —
+ * the hero can be eager + high priority without wasting a download on the hidden copy.
+ */
+function Thumb({ item, sizes, hero, alt }: { item: MediaItem; sizes: string; hero?: boolean; alt: string }) {
   const src = item.kind === "photo" ? item.src : item.video.thumbnailUrl;
   if (!src) return <span className="absolute inset-0 bg-gradient-to-br from-primary/40 to-primary/80" aria-hidden />;
   return (
@@ -59,14 +67,20 @@ function Thumb({ item, sizes, priority, alt }: { item: MediaItem; sizes: string;
       src={src}
       alt={alt}
       fill
-      priority={priority}
-      loading={priority ? undefined : "lazy"}
+      loading={hero ? "eager" : "lazy"}
+      fetchPriority={hero ? "high" : undefined}
       sizes={sizes}
       className="object-cover transition duration-500 group-hover:scale-[1.03]"
       placeholder="blur"
       blurDataURL={BLUR}
     />
   );
+}
+
+/** `sizes` for a mosaic tile: the grid is 4 columns (max ~1280px wide); spans mirror the classes below. */
+function tileSizes(tileCount: number, pos: number) {
+  const cols = tileCount === 1 ? 4 : pos === 0 || (tileCount === 2 && pos === 1) || (tileCount === 3 && pos > 0) || (tileCount === 4 && pos === 1) ? 2 : 1;
+  return `(min-width: 1280px) ${cols * 320}px, ${cols * 25}vw`;
 }
 
 /**
@@ -129,6 +143,7 @@ export function MediaGallery({
   for (let i = 1; i < n && tiles.length < 5; i++) if (!tiles.includes(i)) tiles.push(i);
   const rest = n - tiles.length;
   const tileCount = tiles.length;
+  const heroSizes = `${MOBILE_MQ} 100vw, ${tileSizes(tileCount, 0)}`;
 
   const counters = (
     <div className="flex flex-wrap gap-2">
@@ -173,7 +188,7 @@ export function MediaGallery({
               aria-label={labelFor(item, i)}
               className="group relative aspect-[4/3] w-full shrink-0 snap-center overflow-hidden bg-muted focus-visible:outline-none"
             >
-              <Thumb item={item} sizes="100vw" priority={i === 0} alt={i === 0 ? altFor(item, i) : ""} />
+              <Thumb item={item} sizes={i === 0 ? heroSizes : `${MOBILE_MQ} 100vw, 640px`} hero={i === 0} alt={i === 0 ? altFor(item, i) : ""} />
               {item.kind === "video" && <PlayBadge size="lg" duration={fmt.duration(item.video.durationSec)} />}
             </button>
           ))}
@@ -210,7 +225,7 @@ export function MediaGallery({
                   tileCount === 4 && pos === 1 && "col-span-2",
                 )}
               >
-                <Thumb item={item} sizes={pos === 0 ? "(min-width: 1280px) 640px, 50vw" : "(min-width: 1280px) 320px, 25vw"} priority={pos === 0} alt={pos === 0 ? altFor(item, idx) : ""} />
+                <Thumb item={item} sizes={pos === 0 ? heroSizes : tileSizes(tileCount, pos)} hero={pos === 0} alt={pos === 0 ? altFor(item, idx) : ""} />
                 {item.kind === "video" && <PlayBadge size={pos === 0 ? "lg" : "md"} duration={fmt.duration(item.video.durationSec)} />}
                 {pos === tileCount - 1 && rest > 0 && (
                   <span className="absolute inset-0 grid place-items-center bg-black/50 text-lg font-semibold text-white">+{fmt.digits(rest)}</span>
@@ -408,7 +423,7 @@ function Lightbox({
                   }}
                 >
                   <div className="absolute inset-0 transition-transform duration-200 ease-out" style={{ transform: `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.s})` }}>
-                    <Image key={item.key} src={item.src} alt={altFor(item, index)} fill sizes="100vw" priority className="object-contain" placeholder="blur" blurDataURL={BLUR} />
+                    <Image key={item.key} src={item.src} alt={altFor(item, index)} fill sizes="100vw" loading="eager" fetchPriority="high" className="object-contain" placeholder="blur" blurDataURL={BLUR} />
                   </div>
                 </div>
               ) : (

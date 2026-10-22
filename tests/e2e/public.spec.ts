@@ -30,6 +30,8 @@ test("view a listing detail page with facts and SEO tags", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.getByText("Price per katha")).toBeVisible();
   await expect(page.getByText(/Approximate location/)).toBeVisible();
+  // SEO tags as a crawler sees them: a fresh load, not the client-side navigation head.
+  await page.goto(page.url());
   const jsonLd = await page.locator('script[type="application/ld+json"]').textContent();
   expect(JSON.parse(jsonLd!)["@type"]).toBe("RealEstateListing");
   await expect(page.locator('meta[property="og:image"]')).toHaveCount(1);
@@ -48,6 +50,7 @@ test("watch a video in the gallery", async ({ page }) => {
 
 test("language toggle switches to Bangla", async ({ page }) => {
   await page.goto("/");
+  await page.waitForLoadState("networkidle"); // the toggle is a client button: wait for hydration
   const menu = page.getByRole("button", { name: "Menu" });
   if (await menu.isVisible()) await menu.click(); // mobile: language toggle is in the menu sheet
   await page.getByRole("button", { name: /বাংলা/ }).filter({ visible: true }).first().click();

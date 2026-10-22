@@ -190,3 +190,92 @@ describe("multi-part push to Telegram (mocked Bot API)", () => {
     expect(await t.run((ctx) => ctx.db.system.get(storageIds[0]))).toBeNull();
   });
 });
+
+describe("robustness", () => {
+  it("retries a 429 after retry_after and a failing video surfaces as failed", async () => {
+    process.env.TELEGRAM_BOT_TOKEN = "TEST_TOKEN";
+    process.env.TELEGRAM_CHAT_ID = "-100123";
+    const { t, as, storageIds } = await setup([PART], "image/png");
+    let n = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        ++n === 1
+          ? Response.json({ ok: false, error_code: 429, description: "Too Many Requests: retry after 5", parameters: { retry_after: 5 } })
+          : Response.json({ ok: true, result: { message_id: 9, document: { file_id: "f9", file_unique_id: "u9" } } }),
+      ),
+    );
+    const { mediaId } = await as.mutation(api.media.confirmUpload, { storageId: storageIds[0], kind: "image" });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(n).toBe(2);
+    expect(await t.run((ctx) => ctx.db.get(mediaId))).toMatchObject({ status: "ready", tgFileId: "f9", attempts: 1 });
+
+    // permanent error on a video: media + video row end up "failed" (shown in the dashboard)
+    const v = await setup([PART], "video/mp4");
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ ok: false, error_code: 400, description: "Bad Request: wrong file" })));
+    const { mediaId: vid } = await v.as.mutation(api.media.confirmUpload, { storageId: v.storageIds[0], kind: "video" });
+    const { areaId, image } = await v.t.run(async (ctx) => ({
+      areaId: await ctx.db.insert("areas", { division: "Dhaka", district: "Dhaka", upazila: "X", areaName: "X", slug: "x", geohash: "wh0rs", centerLat: 23.8, centerLng: 90.4, activeCount: 0 }),
+      image: await ctx.db.insert("media", { ownerId: v.seller, kind: "image", status: "ready", attached: false, mimeType: "image/webp", size: 10, attempts: 0, createdAt: Date.now() }),
+    }));
+    const { id: listingId } = await v.as.mutation(api.listings.upsert, {
+      data: {
+        title: "Test plot for video failure",
+        description: "",
+        landType: "residential",
+        sizeValue: 5,
+        sizeUnit: "katha",
+        price: 1_000_000,
+        negotiable: false,
+        areaId,
+        nearbyFacilities: [],
+        utilities: [],
+        hasBoundaryWall: false,
+        landStatus: "ready",
+        documents: [],
+        imageIds: [image],
+      },
+    });
+    const videoId = await v.as.mutation(api.videos.registerUpload, { listingId, mediaId: vid });
+    await v.t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect((await v.t.run((ctx) => ctx.db.get(vid)))?.status).toBe("failed");
+    expect(await v.t.run((ctx) => ctx.db.get(videoId))).toMatchObject({ status: "failed", errorMessage: "400: Bad Request: wrong file" });
+  });
+
+  it("deleteMessage retries on 429 and stops on 'not found'", async () => {
+    process.env.TELEGRAM_BOT_TOKEN = "TEST_TOKEN";
+    process.env.TELEGRAM_CHAT_ID = "-100123";
+    const { t } = await setup([]);
+    const answers = [
+      { ok: false, error_code: 429, description: "Too Many Requests", parameters: { retry_after: 2 } },
+      { ok: false, error_code: 400, description: "Bad Request: message to delete not found" },
+    ];
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json(answers.shift())));
+    await t.action(internal.telegram.deleteMessage, { messageId: 1 });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(2);
+  });
+
+  it("sweeps unconfirmed storage files after a day but keeps referenced ones", async () => {
+    process.env.TELEGRAM_BOT_TOKEN = "TEST_TOKEN";
+    process.env.TELEGRAM_CHAT_ID = "-100123";
+    const { t, as, seller, storageIds } = await setup([PART, PART, 10, 20], "video/mp4");
+    // parts 0+1 confirmed as a pending (unpushed) multi-part video; 2 is an orphan; 3 is a pending image
+    await as.mutation(api.media.confirmParts, { storageIds: storageIds.slice(0, 2), size: 2 * PART, mimeType: "video/mp4", kind: "video" });
+    await t.run((ctx) =>
+      ctx.db.insert("media", { ownerId: seller, kind: "image", status: "ready", attached: true, storageId: storageIds[3], mimeType: "image/png", size: 20, attempts: 8, createdAt: Date.now() }),
+    );
+    vi.setSystemTime(Date.now() + 25 * 3600_000);
+    const res = await t.mutation(internal.media.cleanupOrphanStorage, {});
+    expect(res.deleted).toBe(1);
+    expect(await t.run((ctx) => ctx.db.system.get(storageIds[2]))).toBeNull();
+    for (const i of [0, 1, 3]) expect(await t.run((ctx) => ctx.db.system.get(storageIds[i]))).not.toBeNull();
+  });
+
+  it("videos cannot be smuggled into a listing's photos", async () => {
+    const { t, as, seller, storageIds, total } = await setup();
+    const { mediaId } = await as.mutation(api.media.confirmParts, { storageIds, size: total, mimeType: "video/mp4", kind: "video" });
+    const { claimMedia } = await import("./media");
+    await expect(t.run((ctx) => claimMedia(ctx, [mediaId], seller, new Set()))).rejects.toThrow();
+  });
+});

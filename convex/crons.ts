@@ -7,6 +7,7 @@ const crons = cronJobs();
 crons.daily("expire old listings", { hourUTC: 20, minuteUTC: 0 }, internal.listings.expireOld, {});
 crons.daily("saved search alerts", { hourUTC: 2, minuteUTC: 0 }, internal.savedSearches.runAlerts, {});
 crons.hourly("clean up abandoned uploads", { minuteUTC: 15 }, internal.media.cleanupAbandoned, {});
+crons.hourly("sweep orphan storage and restart stalled pushes", { minuteUTC: 30 }, internal.media.cleanupOrphanStorage, {});
 crons.hourly("fail stuck video jobs", { minuteUTC: 45 }, internal.videos.failStuck, {});
 
 export default crons;

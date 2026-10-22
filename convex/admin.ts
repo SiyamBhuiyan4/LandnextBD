@@ -166,6 +166,8 @@ export const reject = mutation({
     await requireAdmin(ctx);
     const l = await ctx.db.get(id);
     if (!l) throw new ConvexError({ code: "NOT_FOUND", message: "Listing not found." });
+    // Live listings are taken down with unpublish; drafts/sold/expired are not in review.
+    if (l.status !== "pending_review") throw new ConvexError({ code: "INVALID", message: "Listing is not pending review." });
     const text = reason.trim();
     if (text.length < 5) throw new ConvexError({ code: "INVALID", message: "Give the seller a reason (min 5 characters)." });
     await setListingStatus(ctx, l, "rejected", { rejectionReason: text.slice(0, 500) });
@@ -189,7 +191,23 @@ export const unpublish = mutation({
     await requireAdmin(ctx);
     const l = await ctx.db.get(id);
     if (!l) throw new ConvexError({ code: "NOT_FOUND", message: "Listing not found." });
-    await setListingStatus(ctx, l, "rejected", { rejectionReason: reason.trim().slice(0, 500) || "Removed by moderator" });
+    const text = reason.trim().slice(0, 500) || "Removed by moderator";
+    await setListingStatus(ctx, l, "rejected", { rejectionReason: text });
+    // Taking a listing down settles its open reports.
+    const open = await ctx.db
+      .query("reports")
+      .withIndex("by_listing", (q) => q.eq("listingId", id))
+      .take(200);
+    for (const r of open) if (r.status === "open") await ctx.db.patch(r._id, { status: "reviewed" });
+    await ctx.db.insert("notifications", {
+      userId: l.sellerId,
+      kind: "listing_rejected",
+      title: "Listing taken down",
+      body: text.slice(0, 200),
+      href: `/dashboard/listings/${l._id}/edit`,
+      read: false,
+      createdAt: Date.now(),
+    });
     return null;
   },
 });
@@ -291,8 +309,23 @@ export const updateUser = mutation({
     const admin = await requireAdmin(ctx);
     if (id === admin._id && (patch.banned || (patch.role && patch.role !== "admin")))
       throw new ConvexError({ code: "INVALID", message: "You cannot demote or ban yourself." });
+    const target = await ctx.db.get(id);
+    if (!target) throw new ConvexError({ code: "NOT_FOUND", message: "User not found." });
     const clean = Object.fromEntries(Object.entries(patch).filter(([, val]) => val !== undefined));
     await ctx.db.patch(id, clean);
+    // Tell sellers about a verification decision.
+    if (patch.verificationStatus && patch.verificationStatus !== target.verificationStatus && (patch.verificationStatus === "verified" || patch.verificationStatus === "rejected")) {
+      const ok = patch.verificationStatus === "verified";
+      await ctx.db.insert("notifications", {
+        userId: id,
+        kind: ok ? "listing_approved" : "listing_rejected",
+        title: ok ? "You're a verified seller" : "Verification not approved",
+        body: ok ? "A verified badge now shows on your listings." : "We couldn't verify your account. Check your details and request verification again.",
+        href: "/account",
+        read: false,
+        createdAt: Date.now(),
+      });
+    }
     // Banning takes the user's active listings down.
     if (patch.banned) {
       const listings = await ctx.db

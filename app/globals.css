@@ -82,7 +82,7 @@
   --warm: oklch(0.74 0.15 68);
   --warm-foreground: oklch(0.25 0.05 55);
   --success: oklch(0.6 0.14 155);
-  --destructive: oklch(0.577 0.22 27);
+  --destructive: oklch(0.505 0.213 27); /* red-700: AA on its own 10% tint */
   --border: oklch(0.9 0.012 140);
   --input: oklch(0.88 0.015 140);
   --ring: oklch(0.55 0.11 162);

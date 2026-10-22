@@ -25,7 +25,7 @@ export default function SellerPage() {
           <span className="grid size-16 place-items-center rounded-full bg-secondary font-heading text-2xl font-bold text-primary">{p.name.slice(0, 1)}</span>
           <div>
             <h1 className="flex items-center gap-2 font-heading text-2xl font-bold">
-              {p.companyName ?? p.name} {p.verificationStatus === "verified" && <BadgeCheck className="size-6 text-primary" aria-label="Verified seller" />}
+              {p.companyName ?? p.name} {p.verificationStatus === "verified" && <BadgeCheck className="size-6 text-primary" aria-label={t("verifiedSeller")} />}
             </h1>
             <p className="text-sm text-muted-foreground">
               {ts(p.accountType)} · {t("memberSince", { date: fmt.date(p.memberSince) })} ·{" "}

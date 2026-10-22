@@ -13,13 +13,15 @@ async function load(id: string) {
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
-  const v = await load((await params).id);
+  const { id } = await params;
+  const v = await load(id);
   if (!v) return { title: "Video not found", robots: { index: false } };
   const image = v.thumbnailUrl ? new URL(v.thumbnailUrl, SITE).toString() : undefined;
   return {
     title: `${v.title} — ${v.listing?.title ?? "Land video"}`,
     description: v.listing ? `${v.listing.areaName} · walkthrough video` : undefined,
-    openGraph: { type: "video.other", images: image ? [image] : [] },
+    alternates: { canonical: `/watch/${id}` },
+    openGraph: { siteName: "land.db", type: "video.other", images: image ? [image] : [] },
   };
 }
 

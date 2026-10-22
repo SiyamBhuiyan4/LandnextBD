@@ -56,6 +56,7 @@ test.describe.serial("seller posts, admin approves", () => {
   });
 
   test("admin approves it and it goes live", async ({ page }) => {
+    test.setTimeout(180_000); // first visits to /admin compile in dev
     await signIn(page, adminEmail);
     execFileSync("npx", ["convex", "run", "users:setRole", JSON.stringify({ email: adminEmail, role: "admin" })]);
     await page.goto("/admin/review");
@@ -65,9 +66,9 @@ test.describe.serial("seller posts, admin approves", () => {
     await page.getByRole("button", { name: "Approve", exact: true }).click();
     await expect(page).toHaveURL(/\/admin\/review$/);
     await page.goto("/browse?q=" + encodeURIComponent(run));
-    await page.getByText(title).click();
+    await page.getByRole("link", { name: title }).click();
     // Detail page: the uploaded photo is served through /media and the video is playable.
-    await expect(page).toHaveURL(/\/land\//);
+    await expect(page).toHaveURL(/\/land\//, { timeout: 60_000 }); // first visit may compile in dev
     await expect(page.getByRole("img", { name: /photo 1/ }).first()).toBeAttached();
     expect(await page.getByRole("img", { name: /photo 1/ }).first().getAttribute("src")).toContain("media");
     await expect(page.getByRole("button", { name: /^Play video/ }).first()).toBeVisible();

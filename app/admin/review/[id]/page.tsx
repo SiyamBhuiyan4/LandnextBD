@@ -22,6 +22,9 @@ export default function ReviewDetail() {
   const td = useTranslations("docs");
   const tst = useTranslations("status");
   const tl = useTranslations("landType");
+  const ta = useTranslations("account");
+  const ts = useTranslations("sellerType");
+  const tr = useTranslations("reportReason");
   const fmt = useFmt();
   const router = useRouter();
   const d = useQuery(api.admin.reviewDetail, { id: listingId });
@@ -33,7 +36,7 @@ export default function ReviewDetail() {
   const [reason, setReason] = useState("");
 
   if (d === undefined) return <div className="h-96 animate-pulse rounded-2xl bg-muted" />;
-  if (d === null) return <p>Not found</p>;
+  if (d === null) return <p className="rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground">{t("notFound")}</p>;
   const l = d.listing;
   const run = async (fn: () => Promise<unknown>, back = false) => {
     try {
@@ -65,20 +68,20 @@ export default function ReviewDetail() {
           {l.imageUrls.map((src, i) => (
             <a key={src} href={src} target="_blank" rel="noreferrer" className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted ring-primary hover:ring-2">
               <Image src={src} alt={`Photo ${i + 1}`} fill sizes="300px" className="object-cover" />
-              {i === 0 && <span className="absolute top-1.5 left-1.5 rounded-full bg-black/65 px-2 py-0.5 text-[11px] text-white">Cover</span>}
+              {i === 0 && <span className="absolute top-1.5 left-1.5 rounded-full bg-black/65 px-2 py-0.5 text-[11px] text-white">{t("cover")}</span>}
             </a>
           ))}
           {l.imageUrls.length === 0 && <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">{t("noPhotos")}</p>}
         </div>
         <p className="text-sm whitespace-pre-line text-muted-foreground">{l.description}</p>
         <dl className="grid gap-2 text-sm sm:grid-cols-2">
-          <div><dt className="text-xs text-muted-foreground">Exact address</dt><dd>{l.exactAddress ?? "—"}</dd></div>
-          <div><dt className="text-xs text-muted-foreground">Plot / sector</dt><dd>{l.plotNumber ?? "—"} · {l.sectorBlock ?? "—"}</dd></div>
-          <div><dt className="text-xs text-muted-foreground">Lat/Lng</dt><dd>{l.lat?.toFixed(5)}, {l.lng?.toFixed(5)}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">{t("exactAddress")}</dt><dd>{l.exactAddress ?? "—"}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">{t("plotSector")}</dt><dd>{l.plotNumber ?? "—"} · {l.sectorBlock ?? "—"}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">{t("latLng")}</dt><dd>{l.lat !== undefined && l.lng !== undefined ? `${l.lat.toFixed(5)}, ${l.lng.toFixed(5)}` : "—"}</dd></div>
         </dl>
 
         <section>
-          <h3 className="mb-2 font-semibold">Documents</h3>
+          <h3 className="mb-2 font-semibold">{t("documents")}</h3>
           {d.documents.length === 0 && <p className="text-sm text-muted-foreground">—</p>}
           <ul className="space-y-2">
             {d.documents.map((doc) => (
@@ -90,7 +93,7 @@ export default function ReviewDetail() {
                 </span>
                 {doc.url && (
                   <a href={doc.url} target="_blank" rel="noreferrer" className="text-primary hover:underline">
-                    Open
+                    {t("open")}
                   </a>
                 )}
                 <label className="flex items-center gap-1.5">
@@ -112,7 +115,7 @@ export default function ReviewDetail() {
                 <li key={v._id} className="rounded-xl border p-2 text-xs">
                   {v.mp4Url && v.status === "ready" ? <video src={v.mp4Url} controls preload="none" poster={v.thumbnailUrl ?? undefined} className="aspect-video w-full rounded-lg bg-black" /> : <div className="grid aspect-video place-items-center rounded-lg bg-muted">{v.status}</div>}
                   <p className="mt-1">
-                    {v.status} · {v.moderation}
+                    {t(`videoStatus.${v.status}` as never)} · {t(`moderation.${v.moderation}` as never)}
                   </p>
                 </li>
               ))}
@@ -126,7 +129,7 @@ export default function ReviewDetail() {
             <ul className="space-y-1 text-sm">
               {d.reports.map((r) => (
                 <li key={r._id}>
-                  {r.reason} · {r.status} {r.details && `— ${r.details}`}
+                  {tr(r.reason)} · {t(`reportStatus.${r.status}`)} {r.details && `— ${r.details}`}
                 </li>
               ))}
             </ul>
@@ -173,7 +176,7 @@ export default function ReviewDetail() {
             <h3 className="font-semibold">{d.seller.name ?? "—"}</h3>
             <p className="text-muted-foreground">{d.seller.email ?? d.seller.phone}</p>
             <p className="text-xs text-muted-foreground">
-              {d.seller.role} · {d.seller.accountType} · {d.seller.verificationStatus} · {fmt.ago(d.seller.createdAt)}
+              {ta(`roles.${d.seller.role ?? "buyer"}`)} · {ts(d.seller.accountType ?? "owner")} · {ta(`verificationStatus.${d.seller.verificationStatus ?? "unverified"}`)} · {fmt.ago(d.seller.createdAt)}
             </p>
           </div>
         )}
@@ -221,7 +224,7 @@ export default function ReviewDetail() {
           {l.status === "active" && (
             <>
               <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder={t("rejectReason")} className="w-full rounded-lg border bg-background px-3 py-2 text-sm" />
-              <Button variant="destructive" className="w-full" onClick={() => run(() => unpublish({ id: listingId, reason }))}>
+              <Button variant="destructive" className="w-full" onClick={() => confirm(t("confirmUnpublish")) && run(() => unpublish({ id: listingId, reason }))}>
                 {t("unpublish")}
               </Button>
             </>

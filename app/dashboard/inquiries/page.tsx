@@ -6,9 +6,11 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { api } from "@/convex/_generated/api";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useFmt } from "@/hooks/use-fmt";
 import type { LandType } from "@/lib/constants";
+import { errorMessage } from "@/lib/client";
 import { listingHref } from "@/lib/urls";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +23,8 @@ export default function InboxPage() {
   const fmt = useFmt();
   const [filter, setFilter] = useState<Status | undefined>();
   const rows = useQuery(api.inquiries.inbox, { status: filter });
-  const setStatus = useMutation(api.inquiries.setStatus);
+  const setStatusRaw = useMutation(api.inquiries.setStatus);
+  const setStatus = (args: Parameters<typeof setStatusRaw>[0]) => setStatusRaw(args).catch((e) => toast.error(errorMessage(e)));
 
   return (
     <div className="space-y-4">
@@ -34,7 +37,7 @@ export default function InboxPage() {
             onClick={() => setFilter(s)}
             className={cn("rounded-full border px-3 py-1.5 text-xs font-medium", filter === s ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted")}
           >
-            {s ? ti(s) : tc("all")}
+            {s ? (s === "new" ? t("inboxNew") : ti(s)) : tc("all")}
           </button>
         ))}
       </div>

@@ -27,7 +27,8 @@ import {
   vSizeUnit,
   vUtility,
 } from "./validators";
-import { CONFIG, type ListingFilters } from "../lib/constants";
+import { CONFIG, PRICE_BUCKETS, type ListingFilters } from "../lib/constants";
+import { DISTRICT_BN } from "../lib/places";
 import { slugify } from "../lib/format";
 import { toSqft } from "../lib/units";
 
@@ -43,6 +44,7 @@ export function buildListingQuery(ctx: QueryCtx, f: ListingFilters & { areaId?: 
   let base: LQ;
   const text = f.q?.trim();
   const sort = f.sort ?? "newest";
+  const dateDir = sort === "oldest" ? "asc" : "desc";
 
   if (text) {
     base = db.withSearchIndex("search_text", (s) => {
@@ -89,17 +91,17 @@ export function buildListingQuery(ctx: QueryCtx, f: ListingFilters & { areaId?: 
   } else if (f.areaId && f.landType) {
     base = db
       .withIndex("by_status_area_type", (q) => q.eq("status", "active").eq("areaId", f.areaId!).eq("landType", f.landType!))
-      .order("desc");
+      .order(dateDir);
   } else if (f.areaId) {
-    base = db.withIndex("by_status_area_published", (q) => q.eq("status", "active").eq("areaId", f.areaId!)).order("desc");
+    base = db.withIndex("by_status_area_published", (q) => q.eq("status", "active").eq("areaId", f.areaId!)).order(dateDir);
   } else if (f.landType) {
-    base = db.withIndex("by_status_type", (q) => q.eq("status", "active").eq("landType", f.landType!)).order("desc");
+    base = db.withIndex("by_status_type", (q) => q.eq("status", "active").eq("landType", f.landType!)).order(dateDir);
   } else if (f.district) {
-    base = db.withIndex("by_status_district", (q) => q.eq("status", "active").eq("district", f.district!)).order("desc");
+    base = db.withIndex("by_status_district", (q) => q.eq("status", "active").eq("district", f.district!)).order(dateDir);
   } else if (f.division) {
-    base = db.withIndex("by_status_division", (q) => q.eq("status", "active").eq("division", f.division!)).order("desc");
+    base = db.withIndex("by_status_division", (q) => q.eq("status", "active").eq("division", f.division!)).order(dateDir);
   } else {
-    base = db.withIndex("by_status_published", (q) => q.eq("status", "active")).order("desc");
+    base = db.withIndex("by_status_published", (q) => q.eq("status", "active")).order(dateDir);
   }
 
   return base.filter((q) => {
@@ -117,8 +119,33 @@ export function buildListingQuery(ctx: QueryCtx, f: ListingFilters & { areaId?: 
     if (f.verifiedOnly) c.push(q.eq(q.field("isVerified"), true));
     if (f.hasVideo) c.push(q.eq(q.field("hasVideo"), true));
     if (f.negotiable) c.push(q.eq(q.field("negotiable"), true));
+    if (f.sellerType) c.push(q.eq(q.field("sellerType"), f.sellerType));
+    if (f.postedWithinDays) c.push(q.gte(q.field("publishedAt"), Date.now() - f.postedWithinDays * 86_400_000));
     return q.and(...c);
   });
+}
+
+/** The same filters as buildListingQuery, checked in memory (used by the map, which reads by geohash). */
+export function matchesFilters(l: Doc<"listings">, f: ListingFilters & { areaId?: Id<"areas"> }, now = Date.now()) {
+  if (l.status !== "active") return false;
+  if (f.landType && l.landType !== f.landType) return false;
+  if (f.areaId && l.areaId !== f.areaId) return false;
+  if (f.district && l.district !== f.district) return false;
+  if (f.division && l.division !== f.division) return false;
+  if (f.minPrice !== undefined && l.price < f.minPrice) return false;
+  if (f.maxPrice !== undefined && l.price > f.maxPrice) return false;
+  if (f.minSqft !== undefined && l.sizeSqft < f.minSqft) return false;
+  if (f.maxSqft !== undefined && l.sizeSqft > f.maxSqft) return false;
+  if (f.facing && l.facing !== f.facing) return false;
+  if (f.minRoadWidth !== undefined && (l.roadWidthFt ?? 0) < f.minRoadWidth) return false;
+  if (f.verifiedOnly && !l.isVerified) return false;
+  if (f.hasVideo && !l.hasVideo) return false;
+  if (f.negotiable && !l.negotiable) return false;
+  if (f.sellerType && l.sellerType !== f.sellerType) return false;
+  if (f.postedWithinDays && (l.publishedAt ?? 0) < now - f.postedWithinDays * 86_400_000) return false;
+  const words = f.q?.toLowerCase().split(/\s+/).filter(Boolean) ?? [];
+  if (words.length && !words.every((w) => l.searchText.toLowerCase().includes(w))) return false;
+  return matchesArrayFilters(l, f);
 }
 
 /** Array filters Convex .filter() cannot express; applied to each page. */
@@ -128,14 +155,88 @@ export function matchesArrayFilters(l: Doc<"listings">, f: ListingFilters) {
   return true;
 }
 
+// Bangla keywords -> the English words used in titles/searchText.
+const BN_WORDS: [string, string][] = [
+  ["আবাসিক", "residential"],
+  ["বাণিজ্যিক", "commercial"],
+  ["কমার্শিয়াল", "commercial"],
+  ["শিল্প", "industrial"],
+  ["কৃষি", "farmland"],
+  ["প্লট", "plot"],
+  ["কাঠা", "katha"],
+  ["বিঘা", "bigha"],
+  ["শতাংশ", "decimal"],
+  ["কর্নার", "corner"],
+  ["লেক", "lake"],
+  ["সেক্টর", "sector"],
+  ["রাস্তা", "road"],
+  ["জমি", ""],
+];
+const BN_DIGITS = "০১২৩৪৫৬৭৮৯";
+
+/**
+ * The full-text index only holds English text. Rewrite Bangla area/district names,
+ * common land words and Bangla digits in the keyword to their English forms.
+ */
+export async function normalizeFilters<T extends ListingFilters>(ctx: QueryCtx, f: T): Promise<T> {
+  let q = f.q?.trim();
+  if (!q || !/[\u0980-\u09FF]/.test(q)) return f;
+  q = q.replace(/[০-৯]/g, (d) => String(BN_DIGITS.indexOf(d)));
+  const areas = await ctx.db.query("areas").take(1000);
+  for (const a of [...areas].sort((x, y) => (y.areaNameBn?.length ?? 0) - (x.areaNameBn?.length ?? 0)))
+    if (a.areaNameBn && q.includes(a.areaNameBn)) q = q.split(a.areaNameBn).join(` ${a.areaName} `);
+  for (const [en, bn] of Object.entries(DISTRICT_BN)) if (q.includes(bn)) q = q.split(bn).join(` ${en} `);
+  for (const [bn, en] of BN_WORDS) if (q.includes(bn)) q = q.split(bn).join(` ${en} `);
+  q = q.replace(/\s+/g, " ").trim();
+  return { ...f, q: q || undefined };
+}
+
 export const search = query({
   args: { filters: vListingFilters, paginationOpts: paginationOptsValidator },
-  handler: async (ctx, { filters, paginationOpts }) => {
+  handler: async (ctx, args) => {
+    const { paginationOpts } = args;
+    const filters = await normalizeFilters(ctx, args.filters);
     const result = await buildListingQuery(ctx, filters).paginate(paginationOpts);
     const page = await Promise.all(
       result.page.filter((l) => matchesArrayFilters(l, filters)).map((l) => listingCard(ctx, l)),
     );
     return { ...result, page };
+  },
+});
+
+const COUNT_CAP = 2000;
+
+/**
+ * Total matches for the browse header plus per-option counts for the land type,
+ * posted-by and price-bucket filters (each facet ignores its own selection).
+ * Scans at most COUNT_CAP listings; `capped` says the numbers are a floor.
+ */
+export const count = query({
+  args: { filters: vListingFilters },
+  handler: async (ctx, args) => {
+    const f = await normalizeFilters(ctx, args.filters);
+    const { landType, sellerType, minPrice, maxPrice, sort: _sort, ...rest } = f;
+    const rows = (await buildListingQuery(ctx, { ...rest, sort: "newest" }).take(COUNT_CAP)).filter((l) => matchesArrayFilters(l, f));
+    const okType = (l: Doc<"listings">) => !landType || l.landType === landType;
+    const okSeller = (l: Doc<"listings">) => !sellerType || l.sellerType === sellerType;
+    const okPrice = (l: Doc<"listings">) => (minPrice === undefined || l.price >= minPrice) && (maxPrice === undefined || l.price <= maxPrice);
+    const tally = (list: Doc<"listings">[], key: (l: Doc<"listings">) => string | undefined) => {
+      const out: Record<string, number> = {};
+      for (const l of list) {
+        const k = key(l);
+        if (k) out[k] = (out[k] ?? 0) + 1;
+      }
+      return out;
+    };
+    return {
+      total: rows.filter((l) => okType(l) && okSeller(l) && okPrice(l)).length,
+      capped: rows.length >= COUNT_CAP,
+      landType: tally(rows.filter((l) => okSeller(l) && okPrice(l)), (l) => l.landType),
+      sellerType: tally(rows.filter((l) => okType(l) && okPrice(l)), (l) => l.sellerType),
+      price: tally(rows.filter((l) => okType(l) && okSeller(l)), (l) =>
+        PRICE_BUCKETS.find((b) => (b.min === undefined || l.price >= b.min) && (b.max === undefined || l.price < b.max))?.key,
+      ),
+    };
   },
 });
 
@@ -199,10 +300,12 @@ export const getBySlug = query({
     if (!l) return null;
     const viewer = await getViewer(ctx);
     const isOwner = !!viewer && viewer._id === l.sellerId;
-    const publicStatuses = ["active", "sold"];
+    // Expired ads stay reachable (saved lists and old links point at them) but are shown as
+    // no longer available and are noindexed; drafts / in-review / rejected stay private.
+    const publicStatuses = ["active", "sold", "expired"];
     if (!publicStatuses.includes(l.status) && !isOwner && !isAdmin(viewer)) return null;
 
-    const [card, images, seller, saved, inquiry, area] = await Promise.all([
+    const [card, images, seller, saved, inquiry, area, sellerListings] = await Promise.all([
       listingCard(ctx, l),
       l.imageIds.map((id) => mediaUrl(id)),
       sellerSummary(ctx, l.sellerId),
@@ -219,6 +322,10 @@ export const getBySlug = query({
             .first()
         : null,
       ctx.db.get(l.areaId),
+      ctx.db
+        .query("listings")
+        .withIndex("by_seller", (q) => q.eq("sellerId", l.sellerId))
+        .take(200),
     ]);
 
     return {
@@ -238,7 +345,9 @@ export const getBySlug = query({
       upazila: area?.upazila,
       areaNameBn: area?.areaNameBn,
       areaCenter: area ? { lat: area.centerLat, lng: area.centerLng } : null,
-      seller,
+      seller: seller ? { ...seller, activeListings: sellerListings.filter((x) => x.status === "active").length } : null,
+      expiresAt: l.status === "active" ? l.expiresAt : undefined,
+      promotionRequested: isOwner ? !!l.promotionRequested : undefined,
       viewer: {
         signedIn: !!viewer,
         isOwner,
@@ -322,11 +431,11 @@ export const inBounds = query({
     west: v.number(),
     north: v.number(),
     east: v.number(),
-    landType: v.optional(vLandType),
-    minPrice: v.optional(v.number()),
-    maxPrice: v.optional(v.number()),
+    filters: v.optional(vListingFilters),
   },
   handler: async (ctx, a) => {
+    const filters = a.filters ? await normalizeFilters(ctx, a.filters) : {};
+    const now = Date.now();
     let hashes: string[] = [];
     for (let p = 6; p >= 1; p--) {
       hashes = ngeohash.bboxes(a.south, a.west, a.north, a.east, p);
@@ -341,9 +450,7 @@ export const inBounds = query({
       for (const l of rows) {
         if (l.lat === undefined || l.lng === undefined) continue;
         if (l.lat < a.south || l.lat > a.north || l.lng < a.west || l.lng > a.east) continue;
-        if (a.landType && l.landType !== a.landType) continue;
-        if (a.minPrice !== undefined && l.price < a.minPrice) continue;
-        if (a.maxPrice !== undefined && l.price > a.maxPrice) continue;
+        if (!matchesFilters(l, filters, now)) continue;
         pins.push({
           _id: l._id,
           slug: l.slug,
@@ -412,6 +519,14 @@ function validateInput(d: Infer<typeof vListingInput>) {
 }
 
 const vListingInput = v.object(listingInput);
+
+/** Live listings can be renewed (extended) in their last week. */
+const RENEW_WINDOW_MS = 7 * 86400_000;
+/** "Expires soon" reminder goes out this long before expiry. */
+const EXPIRY_WARN_MS = 3 * 86400_000;
+function canRenewActive(l: Doc<"listings">, now = Date.now()) {
+  return l.status === "active" && l.expiresAt !== undefined && l.expiresAt - now <= RENEW_WINDOW_MS;
+}
 
 export const upsert = mutation({
   args: { id: v.optional(v.id("listings")), data: v.object(listingInput) },
@@ -486,7 +601,13 @@ export const upsert = mutation({
         ...fields,
         status: existing.status === "rejected" ? "draft" : existing.status,
       });
-      return { id: existing._id, slug: existing.slug };
+      // A live listing whose public content changes goes back to moderation, so an
+      // approved ad can't be swapped for something else. Price/details edits stay live.
+      if (existing.status === "active" && !isAdmin(user) && needsReReview(existing, fields)) {
+        await setListingStatus(ctx, { ...existing, areaId: data.areaId }, "pending_review");
+        return { id: existing._id, slug: existing.slug, reReview: true };
+      }
+      return { id: existing._id, slug: existing.slug, reReview: false };
     }
 
     const slug = `${slugify(data.title) || "land"}-${Math.random().toString(36).slice(2, 7)}`;
@@ -504,9 +625,21 @@ export const upsert = mutation({
       inquiryCount: 0,
       createdAt: now,
     });
-    return { id: newId, slug };
+    return { id: newId, slug, reReview: false };
   },
 });
+
+/** True when an edit changes what moderators approved: text, location, type, or adds new files. */
+function needsReReview(
+  before: Doc<"listings">,
+  after: Pick<Doc<"listings">, "title" | "description" | "areaId" | "landType" | "imageIds" | "documents">,
+) {
+  if (before.title.trim() !== after.title.trim()) return true;
+  if (before.description.trim() !== after.description.trim()) return true;
+  if (before.areaId !== after.areaId || before.landType !== after.landType) return true;
+  const oldFiles = new Set<string>([...before.imageIds, ...before.documents.map((d) => d.fileId)]);
+  return [...after.imageIds, ...after.documents.map((d) => d.fileId)].some((id) => !oldFiles.has(id));
+}
 
 export const submitForReview = mutation({
   args: { id: v.id("listings") },
@@ -534,9 +667,14 @@ export const renew = mutation({
   args: { id: v.id("listings") },
   handler: async (ctx, { id }) => {
     const { listing } = await requireListingOwner(ctx, id);
-    if (listing.status !== "expired") bad("Only expired listings can be renewed.");
+    // A live listing close to expiry is extended in place (no re-review needed).
+    if (canRenewActive(listing)) {
+      await ctx.db.patch(id, { expiresAt: Date.now() + CONFIG.listingValidityDays * 86400_000, expiryWarnedAt: undefined });
+      return { extended: true };
+    }
+    if (listing.status !== "expired") bad("Only expired listings, or live ones about to expire, can be renewed.");
     await setListingStatus(ctx, listing, "pending_review");
-    return null;
+    return { extended: false };
   },
 });
 
@@ -587,6 +725,7 @@ export const mine = query({
         promotionRequested: l.promotionRequested ?? false,
         updatedAt: l.updatedAt,
         expiresAt: l.expiresAt,
+        canRenew: l.status === "expired" || canRenewActive(l),
       })),
     );
   },
@@ -632,10 +771,29 @@ export const expireOld = internalMutation({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
+    // gt(0) skips rows without expiresAt (undefined sorts before every number).
     const due = await ctx.db
       .query("listings")
-      .withIndex("by_status_expires", (q) => q.eq("status", "active").lt("expiresAt", now))
+      .withIndex("by_status_expires", (q) => q.eq("status", "active").gt("expiresAt", 0).lt("expiresAt", now))
       .take(200);
+    // Remind sellers a few days ahead so they can renew without going offline.
+    const soon = await ctx.db
+      .query("listings")
+      .withIndex("by_status_expires", (q) => q.eq("status", "active").gte("expiresAt", now).lt("expiresAt", now + EXPIRY_WARN_MS))
+      .take(500);
+    for (const l of soon) {
+      if (l.expiryWarnedAt !== undefined) continue;
+      await ctx.db.patch(l._id, { expiryWarnedAt: now });
+      await ctx.db.insert("notifications", {
+        userId: l.sellerId,
+        kind: "listing_expired",
+        title: "Listing expires soon",
+        body: `"${l.title}" expires in a few days. Renew it from your dashboard to keep it live.`,
+        href: "/dashboard/listings",
+        read: false,
+        createdAt: now,
+      });
+    }
     for (const l of due) {
       await setListingStatus(ctx, l, "expired");
       await ctx.db.insert("notifications", {

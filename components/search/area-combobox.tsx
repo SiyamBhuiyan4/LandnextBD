@@ -7,6 +7,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useFmt } from "@/hooks/use-fmt";
+import { districtName } from "@/lib/places";
 import { cn } from "@/lib/utils";
 
 export type AreaOption = { _id: Id<"areas">; slug: string; areaName: string; areaNameBn?: string; district: string; division: string; activeCount: number; centerLat: number; centerLng: number };
@@ -105,7 +106,7 @@ export function AreaCombobox({
               <MapPin className="size-4 shrink-0 text-primary" aria-hidden />
               <span className="flex-1">
                 <span className="font-medium">{name(a)}</span>
-                <span className="text-muted-foreground"> · {a.district}</span>
+                <span className="text-muted-foreground"> · {districtName(a.district, locale)}</span>
               </span>
               <span className="rounded-full bg-muted px-2 text-xs text-muted-foreground tabular-nums">{fmt.digits(a.activeCount)}</span>
             </li>

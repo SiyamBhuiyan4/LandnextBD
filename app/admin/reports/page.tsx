@@ -22,8 +22,8 @@ export default function AdminReports() {
     <div className="space-y-4">
       <div className="flex gap-1.5">
         {(["open", "reviewed", "dismissed"] as const).map((s) => (
-          <button key={s} type="button" aria-pressed={status === s} onClick={() => setStatus(s)} className={cn("rounded-full border px-3 py-1.5 text-xs font-medium capitalize", status === s ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted")}>
-            {s}
+          <button key={s} type="button" aria-pressed={status === s} onClick={() => setStatus(s)} className={cn("rounded-full border px-3 py-1.5 text-xs font-medium", status === s ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted")}>
+            {t(`reportStatus.${s}`)}
           </button>
         ))}
       </div>

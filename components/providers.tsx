@@ -64,7 +64,16 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <ConvexAuthNextjsProvider client={convex}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
+        // The theme script only has to run from the server HTML. When React renders it on the
+        // client (e.g. a notFound() in a dynamic route) a non-JS type keeps React from warning
+        // "Encountered a script tag"; next-themes already suppresses the hydration mismatch.
+        scriptProps={{ type: typeof window === "undefined" ? "text/javascript" : "text/plain" }}
+      >
         <PrefsContext.Provider value={{ fullPrice, setFullPrice }}>
           <CompareContext.Provider value={compare}>
             <TooltipProvider>{children}</TooltipProvider>

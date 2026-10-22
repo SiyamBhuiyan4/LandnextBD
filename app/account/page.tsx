@@ -1,11 +1,14 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
-import { BadgeCheck, Loader2 } from "lucide-react";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { BadgeCheck, Loader2, LogOut, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
+import { NoAccount } from "@/components/dashboard/shell";
 import { usePrefs } from "@/components/providers";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/client";
@@ -20,15 +23,27 @@ export default function AccountPage() {
   const me = useQuery(api.users.viewer);
   const update = useMutation(api.users.updateProfile);
   const requestVerification = useMutation(api.users.requestVerification);
+  const deleteAccount = useMutation(api.users.deleteAccount);
+  const { signOut } = useAuthActions();
+  const { isLoading: authLoading } = useConvexAuth();
+  const router = useRouter();
   const { fullPrice, setFullPrice } = usePrefs();
-  const [form, setForm] = useState({ name: "", accountType: "owner" as AccountType, companyName: "", bio: "" });
+  const [form, setForm] = useState({ name: "", accountType: "owner" as AccountType, companyName: "", bio: "", phone: "" });
   const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    if (me) setForm({ name: me.name ?? "", accountType: me.accountType, companyName: me.companyName ?? "", bio: me.bio ?? "" });
+    if (me) setForm({ name: me.name ?? "", accountType: me.accountType, companyName: me.companyName ?? "", bio: me.bio ?? "", phone: me.phone ?? "" });
   }, [me?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  if (me === null && !authLoading) return <NoAccount />;
   if (!me) return <div className="container-page py-20 text-center"><Loader2 className="mx-auto animate-spin" /></div>;
+
+  const leave = async () => {
+    await signOut();
+    router.push("/");
+    router.refresh();
+  };
 
   return (
     <div className="container-page max-w-3xl py-8">
@@ -43,7 +58,13 @@ export default function AccountPage() {
           e.preventDefault();
           setBusy(true);
           try {
-            await update({ name: form.name, accountType: form.accountType, companyName: form.companyName || undefined, bio: form.bio || undefined });
+            await update({
+              name: form.name,
+              accountType: form.accountType,
+              companyName: form.companyName || undefined,
+              bio: form.bio || undefined,
+              ...(me.phoneVerified ? {} : { phone: form.phone }),
+            });
             toast.success(t("saved"));
           } catch (err) {
             toast.error(errorMessage(err));
@@ -66,6 +87,20 @@ export default function AccountPage() {
               </option>
             ))}
           </select>
+        </label>
+        <label className="block text-sm font-medium">
+          {t("phone")}
+          <input
+            className={inputCls}
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="01XXXXXXXXX"
+            value={form.phone}
+            readOnly={me.phoneVerified}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+          />
+          <span className="mt-1 block text-xs font-normal text-muted-foreground">{me.phoneVerified ? t("phoneVerifiedHint") : t("phoneHint")}</span>
         </label>
         {form.accountType === "company" && (
           <label className="block text-sm font-medium">
@@ -102,6 +137,38 @@ export default function AccountPage() {
           {tc("showFullPrice")}
           <input type="checkbox" className="size-4 accent-[var(--primary)]" checked={fullPrice} onChange={(e) => setFullPrice(e.target.checked)} />
         </label>
+      </div>
+
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-5 shadow-soft">
+        <p className="text-sm text-muted-foreground">{t("signedInAs", { who: me.email ?? me.phone ?? "" })}</p>
+        <Button variant="outline" onClick={() => void leave()}>
+          <LogOut /> {tc("signOut")}
+        </Button>
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-destructive/30 bg-card p-5 shadow-soft">
+        <h2 className="font-heading font-semibold text-red-700 dark:text-destructive">{t("deleteTitle")}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{t("deleteBody")}</p>
+        <Button
+          className="mt-3 text-red-700 dark:text-destructive"
+          variant="destructive"
+          disabled={deleting || me.role === "admin"}
+          onClick={async () => {
+            if (window.prompt(t("deleteConfirm"))?.trim().toUpperCase() !== "DELETE") return;
+            setDeleting(true);
+            try {
+              await deleteAccount();
+              toast.success(t("deleted"));
+              await leave();
+            } catch (e) {
+              toast.error(errorMessage(e));
+              setDeleting(false);
+            }
+          }}
+        >
+          {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />} {t("deleteButton")}
+        </Button>
+        {me.role === "admin" && <p className="mt-2 text-xs text-muted-foreground">{t("deleteAdmin")}</p>}
       </div>
     </div>
   );

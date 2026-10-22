@@ -57,7 +57,10 @@
     "skipToContent": "Skip to content",
     "notFoundBody": "The page or plot you're looking for may have been sold, removed or moved.",
     "errorBody": "Please try again. If it keeps happening, come back in a few minutes.",
-    "previous": "Previous"
+    "previous": "Previous",
+    "feet": "{n} ft",
+    "mainNav": "Main",
+    "homeLink": "{site} home"
   },
   "landType": {
     "residential": "Residential",
@@ -141,7 +144,8 @@
     "price_asc": "Price: low to high",
     "price_desc": "Price: high to low",
     "size_desc": "Size: largest first",
-    "views": "Most viewed"
+    "views": "Most viewed",
+    "oldest": "Oldest first"
   },
   "priceBucket": {
     "under_25l": "Under 25 Lakh",
@@ -268,7 +272,30 @@
     "pickLocation": "Choose location",
     "allOf": "All of {place}",
     "searchAreaPlaceholder": "Type an area name…",
-    "showing": "Showing {shown} so far"
+    "showing": "Showing {shown} so far",
+    "layout": "Layout",
+    "postedBy": "Posted by",
+    "anyone": "Anyone",
+    "postedWithin": "Date posted",
+    "anyTime": "Any time",
+    "within_1": "Last 24 hours",
+    "within_7": "Last 7 days",
+    "within_30": "Last 30 days",
+    "sizeUnit": "Size unit",
+    "apply": "Apply",
+    "priceRanges": "Quick price ranges",
+    "minPriceLabel": "Minimum price",
+    "maxPriceLabel": "Maximum price",
+    "minSizeLabel": "Minimum size",
+    "maxSizeLabel": "Maximum size",
+    "breadcrumb": "Breadcrumb",
+    "home": "Home",
+    "landForSale": "Land for sale",
+    "suggestAreas": "Areas",
+    "searchKeyword": "Search “{q}”",
+    "resultsCapped": "{count}+ listings",
+    "inArea": "in {place}",
+    "typesInArea": "Land types here"
   },
   "listing": {
     "price": "Price",
@@ -325,7 +352,8 @@
     "zoom": "Zoom",
     "plotNumber": "Plot number",
     "address": "Address",
-    "phone": "Phone"
+    "phone": "Phone",
+    "verifiedSeller": "Verified seller"
   },
   "video": {
     "gallery": "Video gallery",
@@ -351,7 +379,8 @@
     "tapToPlay": "Tap to play",
     "dataSaver": "Videos only load when you press play.",
     "keyboardHint": "Space: play/pause · ←/→: seek · ↑/↓: next/prev · F: fullscreen",
-    "resumeAt": "Resume at {time}"
+    "resumeAt": "Resume at {time}",
+    "quality": "Quality"
   },
   "auth": {
     "title": "Welcome to land.db",
@@ -371,7 +400,9 @@
     "invalidCode": "That code didn't work. Check it and try again.",
     "terms": "By continuing you agree to use land.db responsibly and verify documents before any payment.",
     "resend": "Didn't get it? Send again",
-    "resendIn": "Send again in {s}s"
+    "resendIn": "Send again in {s}s",
+    "sendFailed": "Could not send the code. Please try again.",
+    "invalidPhone": "Enter a valid Bangladeshi mobile number (01XXXXXXXXX)."
   },
   "account": {
     "title": "Your account",
@@ -399,7 +430,20 @@
       "seller": "Seller",
       "broker": "Broker",
       "admin": "Admin"
-    }
+    },
+    "noAccountTitle": "Account unavailable",
+    "noAccountBody": "This account is suspended or your session has ended. Sign in again, or contact support if you think this is a mistake.",
+    "signInAgain": "Sign in again",
+    "phone": "Contact mobile number",
+    "phoneHint": "Buyers see this number after they send you an inquiry.",
+    "phoneVerifiedHint": "Verified at sign-in. Buyers see it after they send you an inquiry.",
+    "signedInAs": "Signed in as {who}",
+    "deleteTitle": "Delete account",
+    "deleteBody": "Permanently deletes your profile, all your listings with their photos, videos and papers, your saved plots, searches and inquiries. This cannot be undone.",
+    "deleteConfirm": "Type DELETE to permanently delete your account.",
+    "deleteButton": "Delete my account",
+    "deleted": "Your account was deleted.",
+    "deleteAdmin": "Admins can't delete their own account. Ask another admin to change your role first."
   },
   "saved": {
     "title": "Saved",
@@ -408,7 +452,8 @@
     "noListings": "Tap the heart on any listing to save it here.",
     "noSearches": "Save a search from the browse page to get alerts.",
     "lastAlert": "Last checked {time}",
-    "run": "Run search"
+    "run": "Run search",
+    "delete": "Delete"
   },
   "inquiries": {
     "title": "My inquiries",
@@ -417,7 +462,8 @@
       "new": "Sent",
       "replied": "Replied",
       "closed": "Closed"
-    }
+    },
+    "seller": "Seller: {name}"
   },
   "compare": {
     "title": "Compare listings",
@@ -510,7 +556,10 @@
       "step2": "Add photos and a short video",
       "step3": "Submit — we review within 24 hours",
       "cta": "Post your land"
-    }
+    },
+    "newInquiriesBadge": "{n} new",
+    "extendedToast": "Renewed — your listing stays live for another 90 days",
+    "inboxNew": "New"
   },
   "wizard": {
     "createTitle": "Post land for sale",
@@ -677,7 +726,9 @@
       "type": "Type",
       "area": "Area",
       "price": "Price"
-    }
+    },
+    "liveEditNote": "This listing is live. Price, size and detail changes go live as soon as you save. Changing the title, description, area, land type, or adding photos or papers sends it back for a quick review.",
+    "liveSaveHint": "Live listings are not saved automatically — press “Save changes” when you're done."
   },
   "admin": {
     "title": "Admin",
@@ -742,7 +793,34 @@
       "documents": "Please upload a clear copy of the deed or khatian.",
       "duplicate": "This plot is already listed. Please edit the existing listing instead.",
       "location": "Please choose the correct area and pin the plot on the map."
-    }
+    },
+    "reportStatus": {
+      "open": "Open",
+      "reviewed": "Reviewed",
+      "dismissed": "Dismissed"
+    },
+    "moderation": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "videoStatus": {
+      "uploading": "Uploading",
+      "processing": "Processing",
+      "ready": "Ready",
+      "failed": "Failed"
+    },
+    "searchUsers": "Search name, email or phone",
+    "confirmBan": "Ban {name}? Their live listings will be taken down.",
+    "banned": "Banned",
+    "notFound": "Listing not found.",
+    "cover": "Cover",
+    "exactAddress": "Exact address",
+    "plotSector": "Plot / sector",
+    "latLng": "Lat/Lng",
+    "documents": "Documents",
+    "open": "Open",
+    "confirmUnpublish": "Take this listing down? The seller is notified with your reason."
   },
   "footer": {
     "about": "A modern marketplace for land and plots in Bangladesh.",
@@ -793,6 +871,31 @@
     "videoUnavailable": "Video unavailable",
     "videoUnavailableHint": "We couldn't load this video. Check your connection and try again.",
     "videoLoading": "Loading video…",
-    "retry": "Retry"
+    "retry": "Retry",
+    "adId": "Ad ID",
+    "copyAdId": "Copy ad ID",
+    "adIdCopied": "Ad ID copied",
+    "expiredBanner": "This ad has expired and is no longer available. See similar land below.",
+    "unavailableContact": "This ad is no longer available, so the seller can't be contacted through it.",
+    "safetyTitle": "Stay safe when buying land",
+    "safety1": "Visit the plot in person, ideally with someone you trust, before agreeing to anything.",
+    "safety2": "Check the deed (dolil), khatian and mutation (namjari) at the sub-registry and AC (Land) office.",
+    "safety3": "Never pay advance, booking or \"token\" money before the papers are verified.",
+    "safety4": "Pay through a bank rather than in cash, and get a signed receipt.",
+    "safety5": "Be wary of prices far below the area's market rate or pressure to decide quickly.",
+    "signInToReport": "Sign in to report this listing.",
+    "shareTitle": "Share this listing",
+    "copyLink": "Copy link",
+    "shareFacebook": "Facebook",
+    "shareEmail": "Email",
+    "shareMore": "More options",
+    "sellerListings": "{count, plural, one {{n} active ad} other {{n} active ads}}",
+    "ownerTools": "Manage your ad",
+    "editAd": "Edit",
+    "promoteAd": "Promote this ad",
+    "promotionRequested": "Promotion requested",
+    "viewInquiries": "Inquiries ({count})",
+    "myListings": "My listings",
+    "expiresOn": "expires {date}"
   }
 }

@@ -8,6 +8,7 @@ import { api } from "@/convex/_generated/api";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useFmt } from "@/hooks/use-fmt";
 import type { BrowseFilters } from "@/lib/urls";
+import { districtName, divisionName } from "@/lib/places";
 import { cn } from "@/lib/utils";
 
 type Sel = Pick<BrowseFilters, "division" | "district" | "area">;
@@ -30,7 +31,15 @@ export function LocationPicker({ value, onChange }: { value: Sel; onChange: (v: 
   const allAreas = useMemo(() => (tree ?? []).flatMap((d) => d.districts.flatMap((x) => x.areas)), [tree]);
   const areaName = (a: { areaName: string; areaNameBn?: string }) => (locale === "bn" && a.areaNameBn ? a.areaNameBn : a.areaName);
   const currentArea = allAreas.find((a) => a.slug === value.area);
-  const label = currentArea ? `${areaName(currentArea)}, ${currentArea.district}` : (value.district ?? value.division ?? t("allBangladesh"));
+  const dn = (d: string) => districtName(d, locale);
+  const vn = (d: string) => divisionName(d, locale);
+  const label = currentArea
+    ? `${areaName(currentArea)}, ${dn(currentArea.district)}`
+    : value.district
+      ? dn(value.district)
+      : value.division
+        ? vn(value.division)
+        : t("allBangladesh");
 
   const commit = (v: Sel) => {
     onChange({ division: undefined, district: undefined, area: undefined, ...v });
@@ -47,7 +56,7 @@ export function LocationPicker({ value, onChange }: { value: Sel; onChange: (v: 
   const div = tree?.find((d) => d.name === division);
   const dist = div?.districts.find((d) => d.name === district);
   const query = q.trim().toLowerCase();
-  const matches = query ? allAreas.filter((a) => a.areaName.toLowerCase().includes(query) || a.areaNameBn?.includes(q.trim()) || a.district.toLowerCase().includes(query)).slice(0, 30) : [];
+  const matches = query ? allAreas.filter((a) => a.areaName.toLowerCase().includes(query) || a.areaNameBn?.includes(q.trim()) || a.district.toLowerCase().includes(query) || dn(a.district).includes(q.trim())).slice(0, 30) : [];
 
   const row = (key: string, text: string, count: number, onClick: () => void, opts: { drill?: boolean; active?: boolean; sub?: string; strong?: boolean } = {}) => (
     <li key={key}>
@@ -100,7 +109,7 @@ export function LocationPicker({ value, onChange }: { value: Sel; onChange: (v: 
                   <ChevronLeft className="size-4" />
                 </button>
               )}
-              {query ? t("pickLocation") : (district ?? division ?? t("pickLocation"))}
+              {query ? t("pickLocation") : district ? dn(district) : division ? vn(division) : t("pickLocation")}
             </DialogTitle>
             <div className="relative mt-3">
               <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
@@ -117,19 +126,19 @@ export function LocationPicker({ value, onChange }: { value: Sel; onChange: (v: 
             {tree === undefined && Array.from({ length: 6 }, (_, i) => <li key={i} className="m-1 h-10 animate-pulse rounded-xl bg-muted" />)}
             {query ? (
               matches.length ? (
-                matches.map((a) => row(a._id, areaName(a), a.activeCount, () => commit({ area: a.slug }), { sub: `${a.district}, ${a.division}`, active: a.slug === value.area }))
+                matches.map((a) => row(a._id, areaName(a), a.activeCount, () => commit({ area: a.slug }), { sub: `${dn(a.district)}, ${vn(a.division)}`, active: a.slug === value.area }))
               ) : (
                 <li className="px-3 py-8 text-center text-sm text-muted-foreground">{t("emptyTitle")}</li>
               )
             ) : dist ? (
               <>
-                {row("all", t("allOf", { place: dist.name }), dist.count, () => commit({ district: dist.name }), { strong: true, active: !value.area && value.district === dist.name })}
+                {row("all", t("allOf", { place: dn(dist.name) }), dist.count, () => commit({ district: dist.name }), { strong: true, active: !value.area && value.district === dist.name })}
                 {dist.areas.map((a) => row(a._id, areaName(a), a.activeCount, () => commit({ area: a.slug }), { active: a.slug === value.area }))}
               </>
             ) : div ? (
               <>
-                {row("all", t("allOf", { place: div.name }), div.count, () => commit({ division: div.name }), { strong: true, active: !value.district && !value.area && value.division === div.name })}
-                {div.districts.map((d) => row(d.name, d.name, d.count, () => setDistrict(d.name), { drill: true, active: d.name === (currentArea?.district ?? value.district) }))}
+                {row("all", t("allOf", { place: vn(div.name) }), div.count, () => commit({ division: div.name }), { strong: true, active: !value.district && !value.area && value.division === div.name })}
+                {div.districts.map((d) => row(d.name, dn(d.name), d.count, () => setDistrict(d.name), { drill: true, active: d.name === (currentArea?.district ?? value.district) }))}
               </>
             ) : (
               tree && (
@@ -146,7 +155,7 @@ export function LocationPicker({ value, onChange }: { value: Sel; onChange: (v: 
                       <Globe2 className="size-4" aria-hidden /> {t("allBangladesh")}
                     </button>
                   </li>
-                  {tree.map((d) => row(d.name, d.name, d.count, () => setDivision(d.name), { drill: true, active: d.name === (currentArea?.division ?? value.division) }))}
+                  {tree.map((d) => row(d.name, vn(d.name), d.count, () => setDivision(d.name), { drill: true, active: d.name === (currentArea?.division ?? value.division) }))}
                 </>
               )
             )}

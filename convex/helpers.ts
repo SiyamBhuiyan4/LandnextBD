@@ -144,6 +144,7 @@ export function approxCoord(n?: number) {
 }
 
 export async function listingCard(ctx: Ctx, l: Doc<"listings">) {
+  const area = await ctx.db.get(l.areaId); // cached per transaction; gives the Bangla area name
   return {
     _id: l._id,
     slug: l.slug,
@@ -157,6 +158,7 @@ export async function listingCard(ctx: Ctx, l: Doc<"listings">) {
     negotiable: l.negotiable,
     areaId: l.areaId,
     areaName: l.areaName,
+    areaNameBn: area?.areaNameBn,
     areaSlug: l.areaSlug,
     district: l.district,
     division: l.division,

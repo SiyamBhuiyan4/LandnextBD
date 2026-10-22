@@ -1,12 +1,13 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useConvex, useQuery } from "convex/react";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, BadgeCheck, ChevronLeft, ChevronRight, Clapperboard, FileCheck2, LayoutList, MapPin, PlayCircle, Plus, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "@/convex/_generated/api";
+import type { FunctionReturnType } from "convex/server";
 import type { Id } from "@/convex/_generated/dataModel";
 import { LandTypeIcons } from "@/components/icons";
 import { ListingCard, ListingCardSkeleton } from "@/components/listings/listing-card";
@@ -14,6 +15,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { VideoThumb } from "@/components/video/video-card";
 import { VideoGalleryDialog } from "@/components/video/video-gallery";
 import { useFmt } from "@/hooks/use-fmt";
+import { districtName } from "@/lib/places";
 import type { LandType } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -77,7 +79,17 @@ function useSavedSet() {
 }
 
 export function StatsStrip() {
-  const s = useQuery(api.listings.stats);
+  // One-shot read: a live subscription here re-ran a ~20k-document query for every
+  // home visitor on every listing write (view counts included).
+  const convex = useConvex();
+  const [s, setS] = useState<FunctionReturnType<typeof api.listings.stats>>();
+  useEffect(() => {
+    let live = true;
+    convex.query(api.listings.stats, {}).then((r) => live && setS(r), () => {});
+    return () => {
+      live = false;
+    };
+  }, [convex]);
   const t = useTranslations("home");
   const fmt = useFmt();
   const items = [
@@ -88,21 +100,21 @@ export function StatsStrip() {
   ];
   return (
     <div className="container-page relative z-10 -mt-10">
-      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border shadow-elev-3 sm:grid-cols-4">
+      <ul className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border shadow-elev-3 sm:grid-cols-4">
         {items.map(({ label, value, Icon }) => (
-          <div key={label} className="flex items-center gap-3 bg-card px-4 py-4 sm:px-5">
+          <li key={label} className="flex items-center gap-3 bg-card px-4 py-4 sm:px-5">
             <span className="hidden size-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary sm:grid">
               <Icon className="size-5" aria-hidden />
             </span>
             <div className="flex flex-col-reverse">
-              <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-              <dd className="font-heading text-2xl font-extrabold tracking-tight text-price tabular-nums">
+              <span className="text-xs font-medium text-muted-foreground">{label}</span>
+              <span className="font-heading text-2xl font-extrabold tracking-tight text-price tabular-nums">
                 {value === undefined ? <span className="inline-block h-7 w-12 animate-pulse rounded bg-muted" /> : fmt.digits(value)}
-              </dd>
+              </span>
             </div>
-          </div>
+          </li>
         ))}
-      </dl>
+      </ul>
     </div>
   );
 }
@@ -180,7 +192,7 @@ export function NewestGrid() {
   const saved = useSavedSet();
   return (
     <Section title={t("newest")} href="/browse">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {(rows ?? Array.from({ length: 8 }, () => null)).map((l, i) => (
           <div key={l?._id ?? i} className={cn(i >= 4 && "hidden sm:block")}>
             {l ? <ListingCard l={l} saved={saved.has(l._id)} /> : <ListingCardSkeleton />}
@@ -238,7 +250,7 @@ export function VerifiedSellers() {
             <span className="grid size-12 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-brand-deep font-heading text-lg font-bold text-primary-foreground ring-2 ring-card">{s.name.slice(0, 1)}</span>
             <span className="min-w-0">
               <span className="flex items-center gap-1 font-semibold">
-                <span className="truncate">{s.name}</span> <BadgeCheck className="size-4 shrink-0 text-primary" aria-label="Verified" />
+                <span className="truncate">{s.name}</span> <BadgeCheck className="size-4 shrink-0 text-primary" aria-label={tl("docVerified")} />
               </span>
               <span className="block text-xs text-muted-foreground">
                 {ts(s.accountType)} · {t("activeListings", { count: fmt.digits(s.activeListings) })}
@@ -275,7 +287,7 @@ export function PopularAreas() {
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-heading font-bold">{locale === "bn" && a.areaNameBn ? a.areaNameBn : a.areaName}</span>
                     <span className="block truncate text-xs text-muted-foreground">
-                      {a.district} · {t("listingsCount", { count: fmt.digits(a.activeCount) })}
+                      {districtName(a.district, locale)} · {t("listingsCount", { count: fmt.digits(a.activeCount) })}
                     </span>
                   </span>
                   <ArrowRight className="hidden size-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary sm:block" aria-hidden />

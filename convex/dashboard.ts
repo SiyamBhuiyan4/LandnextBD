@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { query } from "./_generated/server";
-import { dhakaDay, requireRole, SELLER_ROLES } from "./helpers";
+import { dhakaDay, getViewer, requireRole, SELLER_ROLES } from "./helpers";
 
 /** Seller analytics: views/inquiries/watch time over time and top listings. */
 export const analytics = query({
@@ -68,5 +68,21 @@ export const analytics = query({
         newInquiries,
       },
     };
+  },
+});
+
+/** Unread ("new") inquiry count for the dashboard nav badge. */
+export const newInquiryCount = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getViewer(ctx);
+    if (!user || user.role === "buyer") return 0;
+    const rows = await ctx.db
+      .query("inquiries")
+      .withIndex("by_seller", (q) => q.eq("sellerId", user._id))
+      .order("desc")
+      .filter((q) => q.eq(q.field("status"), "new"))
+      .take(100);
+    return rows.length;
   },
 });

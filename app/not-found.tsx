@@ -1,9 +1,15 @@
 import { ArrowRight, Home } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { PlotIcon } from "@/components/icons";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("common");
+  return { title: t("notFound").replace(/[.।]$/, ""), robots: { index: false } };
+}
 
 export default async function NotFound() {
   const t = await getTranslations("common");

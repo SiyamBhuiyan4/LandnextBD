@@ -48,6 +48,8 @@ export const vListingFilters = v.object({
   verifiedOnly: v.optional(v.boolean()),
   hasVideo: v.optional(v.boolean()),
   negotiable: v.optional(v.boolean()),
+  sellerType: v.optional(vAccountType),
+  postedWithinDays: v.optional(v.number()),
   utilities: v.optional(v.array(vUtility)),
   facilities: v.optional(v.array(vFacility)),
   sort: v.optional(vSort),

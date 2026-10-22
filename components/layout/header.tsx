@@ -186,11 +186,11 @@ export function Header() {
         {t("skipToContent")}
       </a>
       <div className="container-page flex h-16 items-center gap-3">
-        <Link href="/" className="flex items-center gap-2 font-heading text-lg font-bold tracking-tight" aria-label="land.db home">
+        <Link href="/" className="flex items-center gap-2 font-heading text-lg font-bold tracking-tight" aria-label={t("homeLink", { site: "land.db" })}>
           <LogoMark size={30} />
           <Wordmark />
         </Link>
-        <nav className="ml-6 hidden items-center gap-1 md:flex" aria-label="Main">
+        <nav className="ml-6 hidden items-center gap-1 md:flex" aria-label={t("mainNav")}>
           {NAV.map((n) => (
             <Link
               key={n.href}
@@ -222,7 +222,7 @@ export function Header() {
                 <LogoMark size={26} /> <Wordmark />
                 <span className="sr-only">{t("menu")}</span>
               </SheetTitle>
-              <nav className="flex flex-col gap-0.5 p-2" aria-label="Mobile">
+              <nav className="flex flex-col gap-0.5 p-2" aria-label={t("menu")}>
                 {MOBILE_NAV.map(({ href, key, Icon }) => (
                   <Link
                     key={href}

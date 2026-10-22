@@ -165,8 +165,18 @@ export default function MyListingsPage() {
                       </Button>
                     </>
                   )}
-                  {l.status === "expired" && (
-                    <Button size="sm" disabled={isBusy} onClick={() => run(l._id, () => renew({ id }), t("renewedToast"))}>
+                  {l.canRenew && (
+                    <Button
+                      size="sm"
+                      variant={l.status === "expired" ? "default" : "outline"}
+                      disabled={isBusy}
+                      onClick={() =>
+                        run(l._id, async () => {
+                          const r = await renew({ id });
+                          toast.success(r.extended ? t("extendedToast") : t("renewedToast"));
+                        })
+                      }
+                    >
                       <RefreshCw /> {t("actions.renew")}
                     </Button>
                   )}

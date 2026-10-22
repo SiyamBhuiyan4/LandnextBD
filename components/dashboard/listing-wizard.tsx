@@ -247,6 +247,10 @@ export function ListingWizard({ listingId: initialId }: { listingId?: Id<"listin
   // --- Saving: one upsert at a time; each run reads the latest form. ---
   const chain = useRef<Promise<boolean>>(Promise.resolve(true));
   const lastErr = useRef<string | undefined>(undefined);
+  const reReview = useRef(false);
+  // Live listings are not autosaved: every save is explicit, because text/photo
+  // changes send the listing back to review.
+  const isLive = existing?.status === "active";
   const doSave = useCallback(async (): Promise<boolean> => {
     const x = fRef.current;
     if (!canSaveDraft(x) || !x.area) return false;
@@ -280,6 +284,7 @@ export function ListingWizard({ listingId: initialId }: { listingId?: Id<"listin
         },
       });
       idRef.current = res.id;
+      if (res.reReview) reReview.current = true;
       setListingId(res.id);
       setSaveState({ s: "saved" });
       return true;
@@ -295,11 +300,27 @@ export function ListingWizard({ listingId: initialId }: { listingId?: Id<"listin
   useEffect(() => {
     if (!loaded || !dirty.current || done) return;
     if (!initialId) writeLocal(DRAFT_KEY, { v: 1, listingId, f, step, at: Date.now() } satisfies LocalDraft);
+    if (isLive) {
+      setSaveState({ s: "idle" });
+      return;
+    }
     if (!canSaveDraft(f)) return;
     setSaveState({ s: "pending" });
     const h = setTimeout(() => void persist(), 1200);
     return () => clearTimeout(h);
-  }, [f, loaded, done, initialId, listingId, step, persist]);
+  }, [f, loaded, done, initialId, listingId, step, persist, isLive]);
+
+  // Unsaved edits to a live listing would be lost on leave.
+  const liveUnsaved = isLive && saveState.s === "idle" && !done; // "idle" is only set after an edit
+  useEffect(() => {
+    if (!liveUnsaved) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [liveUnsaved]);
 
   useEffect(() => {
     if (listingId) writeLocal(stepKey(listingId), step);
@@ -404,7 +425,7 @@ export function ListingWizard({ listingId: initialId }: { listingId?: Id<"listin
         }
       }
       // The first step creates the draft so photos and videos can attach to it.
-      if (stepIndex === 0 && !(await persist())) return toast.error(lastErr.current ?? t("saveFailed"));
+      if (stepIndex === 0 && !isLive && !(await persist())) return toast.error(lastErr.current ?? t("saveFailed"));
     }
     setStep(target);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -416,9 +437,12 @@ export function ListingWizard({ listingId: initialId }: { listingId?: Id<"listin
     if (missing.length) return toast.error(t("fixFirst"));
     setFinishing(true);
     try {
-      if (!(await persist()) || !idRef.current) return;
+      reReview.current = false;
+      if (!(await persist()) || !idRef.current) return toast.error(lastErr.current ?? t("saveFailed"));
       const status = existing?.status;
-      if (status === "active" || status === "pending_review") {
+      if (reReview.current) {
+        setDone("submitted");
+      } else if (status === "active" || status === "pending_review") {
         setDone("saved");
       } else {
         await submit({ id: idRef.current });
@@ -439,6 +463,7 @@ export function ListingWizard({ listingId: initialId }: { listingId?: Id<"listin
   };
 
   const saveAndExit = async () => {
+    if (isLive) return finish();
     if (canSaveDraft(fRef.current) && !(await persist())) return;
     router.push("/dashboard/listings");
   };
@@ -530,6 +555,12 @@ export function ListingWizard({ listingId: initialId }: { listingId?: Id<"listin
             </Button>
           </div>
         </div>
+      )}
+
+      {isLive && (
+        <p className="mb-4 rounded-2xl border border-warm/40 bg-warm/10 p-3 text-sm" role="note">
+          {t("liveEditNote")}
+        </p>
       )}
 
       {/* Progress */}
@@ -891,8 +922,8 @@ export function ListingWizard({ listingId: initialId }: { listingId?: Id<"listin
           <Button variant="outline" size="lg" className="h-12 px-4" onClick={() => goTo(STEPS[stepIndex - 1])} disabled={stepIndex === 0} aria-label={tc("back")}>
             <ArrowLeft /> <span className="hidden sm:inline">{tc("back")}</span>
           </Button>
-          <Button variant="ghost" size="lg" className="hidden h-12 sm:inline-flex" onClick={saveAndExit}>
-            {t("saveExit")}
+          <Button variant="ghost" size="lg" className={cn("h-12", isLive ? "inline-flex" : "hidden sm:inline-flex")} onClick={saveAndExit} disabled={finishing || uploading}>
+            {isLive ? t("saveChanges") : t("saveExit")}
           </Button>
           <div className="flex-1" />
           {step === "review" ? (
@@ -907,7 +938,7 @@ export function ListingWizard({ listingId: initialId }: { listingId?: Id<"listin
           )}
         </div>
       </div>
-      <p className="mt-3 text-center text-xs text-muted-foreground">{t("autosaveHint")}</p>
+      <p className="mt-3 text-center text-xs text-muted-foreground">{isLive ? t("liveSaveHint") : t("autosaveHint")}</p>
     </div>
   );
 }

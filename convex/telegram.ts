@@ -180,16 +180,31 @@ export const backfill = internalAction({
 });
 
 export const deleteMessage = internalAction({
-  args: { messageId: v.number() },
-  handler: async (_ctx, { messageId }) => {
+  args: { messageId: v.number(), attempt: v.optional(v.number()) },
+  handler: async (ctx, { messageId, attempt = 0 }) => {
     const chatId = process.env.TELEGRAM_CHAT_ID;
     if (!token() || !chatId) return;
-    const res = await fetch(`${API}/bot${token()}/deleteMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, message_id: messageId }),
-    });
-    if (!res.ok) console.warn(`[telegram] deleteMessage ${messageId} failed: ${res.status}`);
+    let body: TgResponse<boolean> | null = null;
+    try {
+      const res = await fetch(`${API}/bot${token()}/deleteMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, message_id: messageId }),
+      });
+      body = (await res.json()) as TgResponse<boolean>;
+    } catch (err) {
+      console.warn(`[telegram] deleteMessage ${messageId} network error: ${scrub(String(err))}`);
+    }
+    if (body?.ok) return;
+    // "message to delete not found": already gone, nothing to retry.
+    if (body && body.error_code === 400 && /not found/i.test(body.description ?? "")) return;
+    const retryable = !body || body.error_code === 429 || (body.error_code ?? 0) >= 500;
+    if (retryable && attempt < 5) {
+      const waitSec = (body?.parameters?.retry_after ?? 10 * (attempt + 1)) + 1;
+      await ctx.scheduler.runAfter(waitSec * 1000, internal.telegram.deleteMessage, { messageId, attempt: attempt + 1 });
+      return;
+    }
+    console.warn(`[telegram] deleteMessage ${messageId} failed: ${scrub(`${body?.error_code ?? "?"} ${body?.description ?? ""}`)}`);
   },
 });
 

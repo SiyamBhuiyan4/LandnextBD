@@ -117,6 +117,7 @@ export default defineSchema({
     updatedAt: v.number(),
     publishedAt: v.optional(v.number()),
     expiresAt: v.optional(v.number()),
+    expiryWarnedAt: v.optional(v.number()), // "expires soon" notification sent for this expiresAt
   })
     .index("by_slug", ["slug"])
     .index("by_seller", ["sellerId", "updatedAt"])

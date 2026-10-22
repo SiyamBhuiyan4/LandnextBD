@@ -6,7 +6,9 @@ import { Suspense } from "react";
 import { api } from "@/convex/_generated/api";
 import { BrowseView } from "@/components/search/browse-view";
 import type { LandType } from "@/lib/constants";
-import { slugToLandType } from "@/lib/urls";
+import { districtName, divisionName } from "@/lib/places";
+import { absUrl, breadcrumbList, jsonLdHtml } from "@/lib/seo";
+import { landTypeToSlug, listingHref, slugToLandType } from "@/lib/urls";
 
 // Shared by /land/[area] and /land/[area]/[type]: server-rendered first page for SEO,
 // then the live, filterable browse view takes over.
@@ -38,14 +40,45 @@ export async function AreaPage({ areaSlug, typeSlug }: { areaSlug: string; typeS
   const tl = await getTranslations("landType");
   const locale = await getLocale();
   const placeName = locale === "bn" && r.area.areaNameBn ? r.area.areaNameBn : r.area.areaName;
-  const first = await fetchQuery(api.listings.search, {
-    filters: { areaId: r.area._id, landType: r.landType as LandType | undefined },
-    paginationOpts: { numItems: 12, cursor: null },
-  });
+  const filters = { areaId: r.area._id, landType: r.landType as LandType | undefined };
+  const [first, count] = await Promise.all([
+    fetchQuery(api.listings.search, { filters, paginationOpts: { numItems: 12, cursor: null } }),
+    fetchQuery(api.listings.count, { filters }),
+  ]);
+  const crumbs = [
+    { label: t("home"), href: "/" },
+    { label: t("landForSale"), href: "/browse" },
+    { label: divisionName(r.area.division, locale), href: `/browse?division=${encodeURIComponent(r.area.division)}` },
+    { label: districtName(r.area.district, locale), href: `/browse?district=${encodeURIComponent(r.area.district)}` },
+    { label: placeName, href: `/land/${r.area.slug}` },
+    ...(r.landType ? [{ label: tl(r.landType) }] : []),
+  ];
   const title = r.landType ? `${tl(r.landType)} · ${t("titleIn", { place: placeName })}` : t("titleIn", { place: placeName });
+  const areaPath = `/land/${r.area.slug}`;
+  const path = r.landType ? `${areaPath}/${landTypeToSlug(r.landType)}` : areaPath;
+  // schema.org CollectionPage: breadcrumb trail + the server-rendered first page as an ItemList
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: title,
+    url: absUrl(path),
+    breadcrumb: breadcrumbList([
+      { name: "Home", path: "/" },
+      { name: `Land in ${r.area.areaName}`, path: areaPath },
+      ...(r.landType ? [{ name: tl(r.landType), path }] : []),
+    ]),
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: first.page.length,
+      itemListElement: first.page.map((l, i) => ({ "@type": "ListItem", position: i + 1, url: absUrl(listingHref(l)), name: l.title })),
+    },
+  };
   return (
-    <Suspense>
-      <BrowseView title={title} fixedArea={r.area} fixedType={r.landType} initialPage={first.page} />
-    </Suspense>
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdHtml(jsonLd)} />
+      <Suspense>
+        <BrowseView title={title} fixedArea={r.area} fixedType={r.landType} initialPage={first.page} initialCount={{ total: count.total, capped: count.capped }} breadcrumbs={crumbs} />
+      </Suspense>
+    </>
   );
 }
