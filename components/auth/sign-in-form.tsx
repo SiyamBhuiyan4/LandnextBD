@@ -71,7 +71,7 @@ export function SignInForm() {
   return (
     <div className="w-full max-w-md rounded-3xl border bg-card p-6 shadow-soft sm:p-8">
       <div className="flex flex-col items-center">
-        <LogoMark size={72} className="rounded-2xl" />
+        <LogoMark size={76} />
         <p className="mt-2 text-sm font-medium text-muted-foreground">{t("tagline")}</p>
       </div>
       <h1 className="mt-4 text-center font-heading text-2xl font-bold">

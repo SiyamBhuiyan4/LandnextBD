@@ -27,9 +27,8 @@ function Svg({ size = 24, children, ...p }: P) {
 
 /** Logo mark: a leaf resting in a nest-shaped plot outline. */
 /**
- * The LandnestBD mark: a woven nest framing the land inside it. Cropped tight
- * so the ring still reads at header size; `mark-full.webp` keeps the branches
- * for places with room.
+ * The LandnestBD mark: the whole tree and woven nest framing the land inside
+ * it, cut out of the artwork so it sits on any background.
  */
 export function LogoMark({ size = 32, className, ...p }: { size?: number; className?: string } & Omit<React.ComponentProps<typeof Image>, "src" | "alt" | "width" | "height">) {
   return (
@@ -39,7 +38,7 @@ export function LogoMark({ size = 32, className, ...p }: { size?: number; classN
       width={size}
       height={size}
       priority
-      className={cn("rounded-[28%] object-cover", className)}
+      className={cn("object-contain", className)}
       style={{ width: size, height: size }}
       {...p}
     />
