@@ -550,7 +550,7 @@ export function ListingDetail({ preloaded }: { preloaded: Preloaded<typeof api.l
             <SimilarTag>{tl(l.landType)}</SimilarTag>
             <SimilarTag>{areaLabel}</SimilarTag>
             <SimilarTag>{district}</SimilarTag>
-            <SimilarTag>{divisionName(l.division, locale)}</SimilarTag>
+            {l.division !== l.district && <SimilarTag>{divisionName(l.division, locale)}</SimilarTag>}
           </div>
           <div className="stagger-in grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {similar.slice(0, 8).map((s) => (
