@@ -5,7 +5,7 @@ import { CONFIG } from "../lib/constants";
 export const config = query({
   args: {},
   handler: async () => ({
-    googleEnabled: !!process.env.AUTH_GOOGLE_ID,
+    googleEnabled: true,
     emailDelivery: !!process.env.AUTH_RESEND_KEY,
     smsDelivery: !!process.env.TWILIO_ACCOUNT_SID,
     mediaStore: process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID ? "telegram" : "convex",

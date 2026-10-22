@@ -67,7 +67,7 @@ const PhoneOTP = Phone({
   },
 });
 
-const providers = [EmailOTP, PhoneOTP, ...(process.env.AUTH_GOOGLE_ID ? [Google] : [])];
+const providers = [Google, EmailOTP, PhoneOTP];
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers,
