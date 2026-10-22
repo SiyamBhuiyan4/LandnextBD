@@ -49,10 +49,10 @@ export default function AdminUsers() {
         </select>
       </div>
       <div className="overflow-x-auto rounded-2xl border bg-card shadow-soft">
-        <table className="w-full min-w-[720px] text-sm">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
             <tr>
-              <th className="px-4 py-2.5 font-medium">{t("users")}</th>
+              <th className="sticky left-0 z-10 bg-muted/50 px-4 py-2.5 font-medium">{t("users")}</th>
               <th className="px-3 py-2.5 font-medium">{ta("role")}</th>
               <th className="px-3 py-2.5 font-medium">{ta("verification")}</th>
               <th className="px-3 py-2.5 font-medium" />
@@ -61,7 +61,7 @@ export default function AdminUsers() {
           <tbody>
             {rows?.map((u) => (
               <tr key={u._id} className="border-b last:border-0">
-                <td className="px-4 py-2.5">
+                <td className="sticky left-0 z-10 bg-card px-4 py-2.5">
                   <p className="font-medium">
                     {u.name ?? "—"}
                     {u.banned && <span className="ml-2 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] text-destructive">{t("banned")}</span>}

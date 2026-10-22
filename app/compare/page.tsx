@@ -72,10 +72,10 @@ function CompareInner() {
 
   return (
     <div className="mt-6 overflow-x-auto rounded-2xl border bg-card shadow-elev-2">
-      <table className="w-full min-w-[640px] table-fixed text-sm">
+      <table className="w-full min-w-[560px] table-fixed text-sm">
         <thead>
           <tr className="border-b bg-surface">
-            <th className="w-36 p-3" scope="col">
+            <th className="sticky left-0 z-20 w-28 bg-surface p-3 sm:w-36" scope="col">
               <Button variant="ghost" size="sm" onClick={clear}>
                 {t("clear")}
               </Button>
@@ -98,8 +98,8 @@ function CompareInner() {
         </thead>
         <tbody>
           {line.map((row) => (
-            <tr key={row.label} className="border-b last:border-0 even:bg-muted/30">
-              <th scope="row" className="p-3 text-left text-xs font-medium text-muted-foreground">
+            <tr key={row.label} className="border-b last:border-0 even:bg-muted/30 even:[&>th]:bg-[color-mix(in_oklab,var(--muted)_30%,var(--card))]">
+              <th scope="row" className="sticky left-0 z-10 bg-card p-3 text-left text-xs font-medium text-muted-foreground">
                 {row.label}
               </th>
               {rows.map((r) => (

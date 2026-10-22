@@ -1,5 +1,7 @@
 "use client";
 
+import { cn } from "@/lib/utils";
+
 import { useId, useState } from "react";
 import { useFmt } from "@/hooks/use-fmt";
 
@@ -115,9 +117,9 @@ export function BarList({ title, rows, format = (n) => String(n) }: { title: str
   );
 }
 
-export function StatTile({ label, value, hint }: { label: string; value: string; hint?: string }) {
+export function StatTile({ label, value, hint, className }: { label: string; value: string; hint?: string; className?: string }) {
   return (
-    <div className="rounded-2xl border bg-card p-4 shadow-soft">
+    <div className={cn("rounded-2xl border bg-card p-4 shadow-soft", className)}>
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <p className="mt-1 font-heading text-2xl font-bold">{value}</p>
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}

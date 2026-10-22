@@ -58,7 +58,7 @@ export default function DashboardOverview() {
         <StatTile label={t("pending")} value={fmt.digits(a.counts.pending)} />
         <StatTile label={t("drafts")} value={fmt.digits(a.counts.drafts)} />
         <StatTile label={t("sold")} value={fmt.digits(a.counts.sold)} />
-        <StatTile label={t("newInquiries")} value={fmt.digits(a.counts.newInquiries)} />
+        <StatTile label={t("newInquiries")} value={fmt.digits(a.counts.newInquiries)} className="col-span-2 md:col-span-1" />
       </div>
       <h2 className="font-heading text-lg font-semibold">
         {t("analytics")} · <span className="text-muted-foreground">{t("last30")}</span>
