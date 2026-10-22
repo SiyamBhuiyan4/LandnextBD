@@ -1,11 +1,11 @@
 import { BRAND } from "@/lib/constants";
 
-/** Text logo: "Landnest" + accent "BD". Restyle here to change it everywhere. */
+/** Text logo: the name lowercase, with "bd" in the accent colour. */
 export function Wordmark() {
-  const name = BRAND.site;
-  const tail = name.endsWith("BD") ? "BD" : "";
+  const name = BRAND.site.toLowerCase();
+  const tail = name.endsWith("bd") ? "bd" : "";
   return (
-    <span>
+    <span className="lowercase">
       {tail ? name.slice(0, -tail.length) : name}
       {tail && <span className="text-warm">{tail}</span>}
     </span>

@@ -410,7 +410,8 @@
     "resend": "Didn't get it? Send again",
     "resendIn": "Send again in {s}s",
     "sendFailed": "Could not send the code. Please try again.",
-    "invalidPhone": "Enter a valid Bangladeshi mobile number (01XXXXXXXXX)."
+    "invalidPhone": "Enter a valid Bangladeshi mobile number (01XXXXXXXXX).",
+    "tagline": "নিরাপদ ভবিষ্যৎ, সুখের বসবাস"
   },
   "account": {
     "title": "Your account",

@@ -25,7 +25,7 @@ export async function generateMetadata(): Promise<Metadata> {
     description: t("heroSubtitle"),
     openGraph: { siteName: BRAND.site, type: "website", locale: bn ? "bn_BD" : "en_BD", alternateLocale: [bn ? "en_BD" : "bn_BD"] },
     twitter: { card: "summary_large_image" },
-    icons: { icon: "/brand/icon.svg" },
+    icons: { icon: "/brand/icon.png", apple: "/brand/apple-icon.png" },
   };
 }
 

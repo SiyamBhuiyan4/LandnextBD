@@ -1,3 +1,5 @@
+import Image from "next/image";
+import { cn } from "@/lib/utils";
 // Original LandnestBD icon set: 24x24, 1.75 stroke, currentColor.
 import type { SVGProps } from "react";
 import type { Facility, LandType, Utility } from "@/lib/constants";
@@ -24,18 +26,23 @@ function Svg({ size = 24, children, ...p }: P) {
 }
 
 /** Logo mark: a leaf resting in a nest-shaped plot outline. */
-export function LogoMark({ size = 32, ...p }: P) {
+/**
+ * The LandnestBD mark: a woven nest framing the land inside it. Cropped tight
+ * so the ring still reads at header size; `mark-full.webp` keeps the branches
+ * for places with room.
+ */
+export function LogoMark({ size = 32, className, ...p }: { size?: number; className?: string } & Omit<React.ComponentProps<typeof Image>, "src" | "alt" | "width" | "height">) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" {...p}>
-      <rect width="32" height="32" rx="9" fill="var(--primary)" />
-      <path d="M6.5 20.5c3 3.2 6.2 4.5 9.5 4.5s6.5-1.3 9.5-4.5" stroke="var(--warm)" strokeWidth="2.4" strokeLinecap="round" fill="none" />
-      <path d="M8.5 17.5h15" stroke="var(--primary-foreground)" strokeWidth="1.6" strokeLinecap="round" strokeDasharray="2.2 2.2" opacity=".75" />
-      <path
-        d="M16 6.5c4.6 1.6 6.4 5.4 4.8 9.5-3.9.6-7.7-1.3-8.6-5.1 1-1.9 2.2-3.4 3.8-4.4Z"
-        fill="var(--primary-foreground)"
-      />
-      <path d="M12.6 14.6c1.6-1.6 3.4-2.9 5.6-3.8" stroke="var(--primary)" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
+    <Image
+      src="/brand/mark.webp"
+      alt=""
+      width={size}
+      height={size}
+      priority
+      className={cn("rounded-[28%] object-cover", className)}
+      style={{ width: size, height: size }}
+      {...p}
+    />
   );
 }
 
