@@ -31,7 +31,7 @@ export default function MyInquiriesPage() {
         </div>
       )}
       <ul className="mt-6 space-y-3">
-        {rows === undefined && <li className="h-24 animate-pulse rounded-2xl bg-muted" />}
+        {rows === undefined && <li className="h-24 skeleton rounded-2xl" />}
         {rows?.map((i) => {
           const live = i.listing?.status === "active";
           return (

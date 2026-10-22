@@ -35,7 +35,7 @@ export default function SellerPage() {
           </div>
         </div>
       ) : (
-        <div className="h-16 w-72 animate-pulse rounded-xl bg-muted" />
+        <div className="h-16 w-72 skeleton rounded-xl" />
       )}
       {p?.bio && <p className="mt-4 max-w-2xl text-sm text-muted-foreground">{p.bio}</p>}
       <h2 className="mt-8 mb-4 font-heading text-lg font-semibold">{p ? th("listingsCount", { count: fmt.digits(p.listings.length) }) : ""}</h2>

@@ -35,7 +35,7 @@ export default function ReviewDetail() {
   const setDoc = useMutation(api.admin.setDocumentVerified);
   const [reason, setReason] = useState("");
 
-  if (d === undefined) return <div className="h-96 animate-pulse rounded-2xl bg-muted" />;
+  if (d === undefined) return <div className="h-96 skeleton rounded-2xl" />;
   if (d === null) return <p className="rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground">{t("notFound")}</p>;
   const l = d.listing;
   const run = async (fn: () => Promise<unknown>, back = false) => {

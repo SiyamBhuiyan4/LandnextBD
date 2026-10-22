@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 
 const MapView = dynamic(() => import("@/components/search/map-view"), {
   ssr: false,
-  loading: () => <div className="h-[55vh] animate-pulse rounded-2xl bg-muted lg:h-[70vh]" />,
+  loading: () => <div className="h-[55vh] skeleton rounded-2xl lg:h-[70vh]" />,
 });
 
 type Layout = "grid" | "list" | "map";
@@ -382,7 +382,7 @@ export function BrowseView({
                   )}
                 </div>
               ) : (
-                <div className={cn("grid gap-4 sm:gap-5", layout === "grid" ? "sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1")}>
+                <div className={cn("stagger-in grid gap-4 sm:gap-5", layout === "grid" ? "sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1")}>
                   {rows.map((l, i) => (
                     <ListingCard key={l._id} l={l} saved={saved.has(l._id)} layout={layout} priority={i < 3} />
                   ))}

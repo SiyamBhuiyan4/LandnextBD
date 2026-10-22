@@ -80,11 +80,11 @@ export default function VideosPage() {
         })}
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="stagger-in mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {results.map((v) => (
           <VideoThumb key={v._id} v={v} onClick={() => setOpen({ listingId: v.listingId, videoId: v._id })} />
         ))}
-        {status === "LoadingFirstPage" && Array.from({ length: 8 }, (_, i) => <div key={i} className="aspect-video animate-pulse rounded-xl bg-muted" />)}
+        {status === "LoadingFirstPage" && Array.from({ length: 8 }, (_, i) => <div key={i} className="aspect-video skeleton rounded-xl" />)}
       </div>
       {status === "Exhausted" && results.length === 0 && (
         <div className="mt-6 grid place-items-center rounded-3xl border border-dashed bg-surface px-6 py-16 text-center">

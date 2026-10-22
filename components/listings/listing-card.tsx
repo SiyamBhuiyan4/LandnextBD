@@ -225,18 +225,18 @@ export function ListingCard({
 export function ListingCardSkeleton({ layout = "grid" }: { layout?: "grid" | "list" }) {
   return (
     <div className={cn("overflow-hidden rounded-2xl border bg-card shadow-elev-1", layout === "list" && "flex flex-col sm:flex-row")} aria-hidden>
-      <div className={cn("aspect-[4/3] animate-pulse bg-muted", layout === "list" && "sm:aspect-auto sm:min-h-52 sm:w-80 sm:shrink-0")} />
+      <div className={cn("aspect-[4/3] skeleton", layout === "list" && "sm:aspect-auto sm:min-h-52 sm:w-80 sm:shrink-0")} />
       <div className="flex-1 space-y-3 p-4">
-        <div className="h-6 w-32 animate-pulse rounded-md bg-muted" />
-        <div className="h-3 w-20 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-full animate-pulse rounded bg-muted" />
-        <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
+        <div className="h-6 w-32 skeleton rounded-md" />
+        <div className="h-3 w-20 skeleton rounded" />
+        <div className="h-4 w-full skeleton rounded" />
+        <div className="h-3 w-2/3 skeleton rounded" />
         <div className="flex gap-1.5">
-          <div className="h-5 w-20 animate-pulse rounded-full bg-muted" />
-          <div className="h-5 w-16 animate-pulse rounded-full bg-muted" />
+          <div className="h-5 w-20 skeleton rounded-full" />
+          <div className="h-5 w-16 skeleton rounded-full" />
         </div>
         <div className="h-px w-full bg-border" />
-        <div className="h-6 w-full animate-pulse rounded bg-muted" />
+        <div className="h-6 w-full skeleton rounded" />
       </div>
     </div>
   );

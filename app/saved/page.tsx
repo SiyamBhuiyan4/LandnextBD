@@ -36,7 +36,7 @@ export default function SavedPage() {
 
       <section className="mt-6">
         <h2 className="mb-3 font-heading text-lg font-semibold">{t("searches")}</h2>
-        {searches === undefined && <div className="h-28 animate-pulse rounded-2xl bg-muted sm:w-1/2 lg:w-1/3" />}
+        {searches === undefined && <div className="h-28 skeleton rounded-2xl sm:w-1/2 lg:w-1/3" />}
         {searches?.length === 0 && (
           <div className="rounded-2xl border border-dashed p-8 text-center">
             <BellRing className="mx-auto size-8 text-muted-foreground" aria-hidden />
@@ -78,7 +78,7 @@ export default function SavedPage() {
             </Link>
           </div>
         )}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="stagger-in grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {listings === undefined ? Array.from({ length: 4 }, (_, i) => <ListingCardSkeleton key={i} />) : listings.map((l) => <ListingCard key={l._id} l={l} saved />)}
         </div>
       </section>

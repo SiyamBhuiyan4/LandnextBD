@@ -19,7 +19,7 @@ export default function DashboardOverview() {
   const fmt = useFmt();
   const a = useQuery(api.dashboard.analytics, { days: 30 });
   const mine = useQuery(api.listings.mine);
-  if (!a || mine === undefined) return <div className="h-96 animate-pulse rounded-2xl bg-muted" />;
+  if (!a || mine === undefined) return <div className="h-96 skeleton rounded-2xl" />;
   if (mine.length === 0) return <PostLandEmpty />;
   const mins = (s: number) => `${fmt.digits(Math.round(s / 60))}m`;
   const todo = mine.filter((l) => l.status === "draft" || l.status === "rejected" || l.status === "expired").slice(0, 3);

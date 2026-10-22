@@ -44,7 +44,7 @@ function CompareInner() {
         </Link>
       </div>
     );
-  if (!rows) return <div className="mt-8 h-96 animate-pulse rounded-2xl bg-muted" />;
+  if (!rows) return <div className="mt-8 h-96 skeleton rounded-2xl" />;
 
   const cheapestPerKatha = Math.min(...rows.map((r) => pricePerUnit(r.price, r.sizeSqft, "katha")));
   type Row = NonNullable<typeof rows>[number];

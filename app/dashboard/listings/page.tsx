@@ -48,7 +48,7 @@ export default function MyListingsPage() {
     }
   };
 
-  if (rows === undefined) return <div className="h-64 animate-pulse rounded-2xl bg-muted" />;
+  if (rows === undefined) return <div className="h-64 skeleton rounded-2xl" />;
   if (rows.length === 0) return <PostLandEmpty />;
 
   const counts = Object.fromEntries(FILTERS.map((f) => [f, f === "all" ? rows.length : rows.filter((r) => r.status === f).length]));

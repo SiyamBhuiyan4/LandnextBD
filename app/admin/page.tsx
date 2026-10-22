@@ -14,7 +14,7 @@ export default function AdminOverview() {
   const td = useTranslations("dashboard");
   const fmt = useFmt();
   const o = useQuery(api.admin.overview);
-  if (!o) return <div className="h-96 animate-pulse rounded-2xl bg-muted" />;
+  if (!o) return <div className="h-96 skeleton rounded-2xl" />;
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

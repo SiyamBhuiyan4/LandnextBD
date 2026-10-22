@@ -27,7 +27,7 @@ import { allUnits } from "@/lib/units";
 import { landTypeToSlug, listingHref } from "@/lib/urls";
 import { cn } from "@/lib/utils";
 
-const MiniMap = dynamic(() => import("@/components/listings/mini-map"), { ssr: false, loading: () => <div className="h-64 animate-pulse bg-muted sm:h-80" /> });
+const MiniMap = dynamic(() => import("@/components/listings/mini-map"), { ssr: false, loading: () => <div className="h-64 skeleton sm:h-80" /> });
 
 function Fact({ icon, label, value, muted }: { icon: React.ReactNode; label: string; value: React.ReactNode; muted?: boolean }) {
   return (

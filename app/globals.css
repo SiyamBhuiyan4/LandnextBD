@@ -5,6 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Shared motion curve: ease-soft utility + var(--ease-out-soft) in keyframes. */
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-jakarta), var(--font-bengali), ui-sans-serif, system-ui, sans-serif;
@@ -250,8 +252,45 @@
 }
 
 .page-in {
-  animation: page-in 0.35s ease-out both;
+  animation: page-in 0.35s var(--ease-out-soft) both;
 }
+
+/* Skeletons sweep instead of blinking, so loading reads as progress. */
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--muted) 0%, color-mix(in oklab, var(--muted) 60%, var(--background)) 50%, var(--muted) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* Listing grids reveal card by card rather than all at once. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.stagger-in > * {
+  animation: rise-in 0.45s var(--ease-out-soft) both;
+}
+
+.stagger-in > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-in > *:nth-child(2) { animation-delay: 45ms; }
+.stagger-in > *:nth-child(3) { animation-delay: 90ms; }
+.stagger-in > *:nth-child(4) { animation-delay: 135ms; }
+.stagger-in > *:nth-child(5) { animation-delay: 180ms; }
+.stagger-in > *:nth-child(6) { animation-delay: 215ms; }
+.stagger-in > *:nth-child(n + 7) { animation-delay: 250ms; }
 
 @media (prefers-reduced-motion: reduce) {
   *,

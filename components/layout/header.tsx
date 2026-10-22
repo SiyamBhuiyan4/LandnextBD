@@ -102,7 +102,7 @@ function UserMenu() {
   const { signOut } = useAuthActions();
   const router = useRouter();
   const t = useTranslations("common");
-  if (viewer === undefined) return <div className="size-8 animate-pulse rounded-full bg-muted" />;
+  if (viewer === undefined) return <div className="size-8 skeleton rounded-full" />;
   if (viewer === null)
     return (
       <Link href="/signin" className={buttonVariants({ variant: "outline", size: "sm" })}>

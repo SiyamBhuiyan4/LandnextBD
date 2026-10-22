@@ -21,7 +21,7 @@ import { CONFIG, DOCUMENT_TYPES, FACILITIES, FACINGS, LAND_TYPES, UTILITIES, typ
 import { toSqft, type SizeUnit } from "@/lib/units";
 import { cn } from "@/lib/utils";
 
-const PinPicker = dynamic(() => import("@/components/dashboard/pin-picker"), { ssr: false, loading: () => <div className="h-72 animate-pulse rounded-xl bg-muted" /> });
+const PinPicker = dynamic(() => import("@/components/dashboard/pin-picker"), { ssr: false, loading: () => <div className="h-72 skeleton rounded-xl" /> });
 
 const STEPS = ["land", "media", "details", "review"] as const;
 type Step = (typeof STEPS)[number];
@@ -492,7 +492,7 @@ export function ListingWizard({ listingId: initialId }: { listingId?: Id<"listin
   };
 
   // --- Render ---
-  if (initialId && !loaded) return <div className="mx-auto h-96 max-w-3xl animate-pulse rounded-2xl bg-muted" />;
+  if (initialId && !loaded) return <div className="mx-auto h-96 max-w-3xl skeleton rounded-2xl" />;
 
   if (done)
     return (

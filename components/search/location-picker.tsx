@@ -123,7 +123,7 @@ export function LocationPicker({ value, onChange }: { value: Sel; onChange: (v: 
             </div>
           </div>
           <ul className="flex-1 overflow-y-auto p-2">
-            {tree === undefined && Array.from({ length: 6 }, (_, i) => <li key={i} className="m-1 h-10 animate-pulse rounded-xl bg-muted" />)}
+            {tree === undefined && Array.from({ length: 6 }, (_, i) => <li key={i} className="m-1 h-10 skeleton rounded-xl" />)}
             {query ? (
               matches.length ? (
                 matches.map((a) => row(a._id, areaName(a), a.activeCount, () => commit({ area: a.slug }), { sub: `${dn(a.district)}, ${vn(a.division)}`, active: a.slug === value.area }))

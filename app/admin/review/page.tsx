@@ -20,7 +20,7 @@ export default function ReviewQueue() {
   const rows = useQuery(api.admin.queue);
   const approve = useMutation(api.admin.approve);
   const [busy, setBusy] = useState<string | null>(null);
-  if (rows === undefined) return <div className="h-64 animate-pulse rounded-2xl bg-muted" />;
+  if (rows === undefined) return <div className="h-64 skeleton rounded-2xl" />;
   if (rows.length === 0)
     return (
       <div className="grid place-items-center rounded-2xl border border-dashed p-10 text-center text-muted-foreground">

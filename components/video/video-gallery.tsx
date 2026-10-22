@@ -53,7 +53,7 @@ export function VideoGalleryBody({ listingId, initialVideoId }: { listingId: Id<
     <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
       <div className="min-w-0 space-y-3">
         {own === undefined ? (
-          <div className="aspect-video animate-pulse rounded-xl bg-muted" />
+          <div className="aspect-video skeleton rounded-xl" />
         ) : current ? (
           <>
             <VideoPlayer
@@ -100,7 +100,7 @@ export function VideoGalleryBody({ listingId, initialVideoId }: { listingId: Id<
         <p className="mb-2 text-sm font-semibold">{t("related")}</p>
         <div className="scrollbar-none flex gap-3 overflow-x-auto pb-1 lg:max-h-[60vh] lg:flex-col lg:overflow-y-auto">
           {related === undefined
-            ? Array.from({ length: 3 }, (_, i) => <div key={i} className="aspect-video w-56 shrink-0 animate-pulse rounded-xl bg-muted lg:w-full" />)
+            ? Array.from({ length: 3 }, (_, i) => <div key={i} className="aspect-video w-56 shrink-0 skeleton rounded-xl lg:w-full" />)
             : related.map((v) => <VideoThumb key={v._id} v={v} onClick={() => go(v)} className="w-56 shrink-0 lg:w-full" />)}
           {related?.length === 0 && <p className="text-sm text-muted-foreground">{t("noVideos")}</p>}
         </div>

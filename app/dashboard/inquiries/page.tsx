@@ -42,7 +42,7 @@ export default function InboxPage() {
         ))}
       </div>
       {rows === undefined ? (
-        <div className="h-40 animate-pulse rounded-2xl bg-muted" />
+        <div className="h-40 skeleton rounded-2xl" />
       ) : rows.length === 0 ? (
         <p className="rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground">{t("noInquiries")}</p>
       ) : (

@@ -109,7 +109,7 @@ export function StatsStrip() {
             <div className="flex flex-col-reverse">
               <span className="text-xs font-medium text-muted-foreground">{label}</span>
               <span className="font-heading text-2xl font-extrabold tracking-tight text-price tabular-nums">
-                {value === undefined ? <span className="inline-block h-7 w-12 animate-pulse rounded bg-muted" /> : fmt.digits(value)}
+                {value === undefined ? <span className="inline-block h-7 w-12 skeleton rounded" /> : fmt.digits(value)}
               </span>
             </div>
           </li>
@@ -225,7 +225,7 @@ export function VideosStrip() {
             v ? (
               <VideoThumb key={v._id} v={v} onClick={() => setOpen({ listingId: v.listingId, videoId: v._id })} className="w-64 shrink-0 sm:w-72" />
             ) : (
-              <div key={i} className="aspect-video w-64 shrink-0 animate-pulse rounded-xl bg-muted sm:w-72" />
+              <div key={i} className="aspect-video w-64 shrink-0 skeleton rounded-xl sm:w-72" />
             ),
           )}
         </div>
@@ -274,7 +274,7 @@ export function PopularAreas() {
     <Section title={t("popularAreas")} href="/browse">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {tree === undefined
-          ? Array.from({ length: 8 }, (_, i) => <div key={i} className="h-[76px] animate-pulse rounded-2xl bg-muted" />)
+          ? Array.from({ length: 8 }, (_, i) => <div key={i} className="h-[76px] skeleton rounded-2xl" />)
           : areas.map((a, i) => (
               <Reveal key={a._id} delay={i * 0.03}>
                 <Link
