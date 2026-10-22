@@ -168,6 +168,18 @@ export function ContactPanel({
           }}
         >
           <p className="text-xs text-muted-foreground">{t("inquiryFirst")}</p>
+          <div className="flex flex-wrap gap-2" role="group" aria-label={t("quickTitle")}>
+            {(["quickVisit", "quickDocs", "quickNegotiate"] as const).map((k) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setMsg(t(k.replace("quick", "quickText")))}
+                className="rounded-full border bg-background px-3 py-1.5 text-xs font-medium hover:border-primary/50 hover:bg-muted"
+              >
+                {t(k)}
+              </button>
+            ))}
+          </div>
           <label className="block text-sm font-medium" htmlFor="inq-msg">
             {t("inquiryMessage")}
           </label>

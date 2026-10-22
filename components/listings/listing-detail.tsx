@@ -20,6 +20,7 @@ import { VideoThumb } from "@/components/video/video-card";
 import { useFmt } from "@/hooks/use-fmt";
 import { errorMessage, readLocal, sessionId, writeLocal } from "@/lib/client";
 import { RECENT_KEY, type RecentItem } from "@/components/home/recently-viewed";
+import { CostEstimate } from "@/components/listings/cost-estimate";
 import { DOCUMENT_TYPES, REPORT_REASONS, type ReportReason } from "@/lib/constants";
 import { districtName } from "@/lib/places";
 import { allUnits } from "@/lib/units";
@@ -306,6 +307,7 @@ export function ListingDetail({ preloaded }: { preloaded: Preloaded<typeof api.l
               <Fact icon={<Hash className="size-5" />} label={t("plotNumber")} value={revealed?.plot ?? td2("sharedAfterInquiry")} muted={!revealed?.plot} />
             </dl>
             <AreaPriceInsight listingId={l._id} sizeSqft={l.sizeSqft} unit={unitKatha} />
+            <CostEstimate price={l.price} />
             <details className="group mt-3 rounded-xl border bg-card px-4 py-3 text-sm">
               <summary className="flex cursor-pointer list-none items-center gap-2 font-medium">
                 <Ruler className="size-4 text-primary" aria-hidden /> {t("allSizes")}

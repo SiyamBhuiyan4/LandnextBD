@@ -354,7 +354,14 @@
     "plotNumber": "Plot number",
     "address": "Address",
     "phone": "Phone",
-    "verifiedSeller": "Verified seller"
+    "verifiedSeller": "Verified seller",
+    "quickTitle": "Quick messages",
+    "quickVisit": "Request a site visit",
+    "quickDocs": "Ask about documents",
+    "quickNegotiate": "Ask about price",
+    "quickTextVisit": "Hello, I would like to visit this plot. When would it be convenient?",
+    "quickTextDocs": "Hello, could you share the deed, khatian and mutation papers for this plot?",
+    "quickTextNegotiate": "Hello, is the price negotiable? Please let me know your best price."
   },
   "video": {
     "gallery": "Video gallery",
@@ -904,6 +911,11 @@
     "insightBelow": "About {pct}% below the area median price.",
     "insightAbove": "About {pct}% above the area median price.",
     "insightMedian": "Area median: {price} per {unit} · based on {count} active listings",
-    "insightCapped": "+"
+    "insightCapped": "+",
+    "costTitle": "Estimated total cost",
+    "costPrice": "Listed price",
+    "costFees": "Registration & mutation (~{pct}%)",
+    "costTotal": "Estimated total",
+    "costNote": "Estimate only. Actual fees depend on the sub-registry office and the land's value. Confirm before you pay."
   }
 }
