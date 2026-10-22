@@ -112,7 +112,19 @@ describe("privacy", () => {
     expect(await as(buyer).query(api.inquiries.revealContact, { listingId: id })).toBeNull();
     await as(buyer).mutation(api.inquiries.create, { listingId: id, message: "Is it available?", contactPhone: "01711111111" });
     const revealed = await as(buyer).query(api.inquiries.revealContact, { listingId: id });
-    expect(revealed).toMatchObject({ phone: "+8801700000001", exactAddress: "Plot 9, Sector 5, Purbachal", lat: 23.8391 });
+    // The plot details open up, but calls go through the company line: a buyer
+    // must never be handed the seller's personal number.
+    expect(revealed).toMatchObject({ exactAddress: "Plot 9, Sector 5, Purbachal", lat: 23.8391 });
+    expect(revealed?.phone).not.toBe("+8801700000001");
+    expect(revealed?.email).not.toBe("seller@landnestbd.test");
+
+    // Nor through the buyer's own inquiry list.
+    const mine = await as(buyer).query(api.inquiries.mine, {});
+    expect(JSON.stringify(mine)).not.toContain("+8801700000001");
+
+    // The seller still sees their own number on their own listing.
+    const ownerView = await as(seller).query(api.inquiries.revealContact, { listingId: id });
+    expect(ownerView?.phone).toBe("+8801700000001");
   });
 });
 
