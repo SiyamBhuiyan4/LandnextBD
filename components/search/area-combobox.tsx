@@ -8,6 +8,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useFmt } from "@/hooks/use-fmt";
 import { searchAreas } from "@/lib/area-search";
+import { aliasesFor } from "@/lib/districts";
 import { districtName } from "@/lib/places";
 import { cn } from "@/lib/utils";
 
@@ -49,9 +50,10 @@ export function AreaCombobox({
   const typed = value && text === name(value) ? "" : text;
   const results = useMemo(() => {
     if (!all) return undefined;
-    return typed.trim()
-      ? searchAreas(all, typed, 8)
-      : [...all].sort((a, b) => b.activeCount - a.activeCount || a.areaName.localeCompare(b.areaName)).slice(0, 8);
+    if (!typed.trim()) return [...all].sort((a, b) => b.activeCount - a.activeCount || a.areaName.localeCompare(b.areaName)).slice(0, 8);
+    // Older spellings live in the district table, not the database row.
+    const withAliases = all.map((a) => ({ ...a, aliases: aliasesFor(a.areaName) }));
+    return searchAreas(withAliases, typed, 8);
   }, [all, typed]);
 
   useEffect(() => {
