@@ -1,6 +1,7 @@
 import Google from "@auth/core/providers/google";
 import { convexAuth } from "@convex-dev/auth/server";
 import { Email } from "@convex-dev/auth/providers/Email";
+import { Password } from "@convex-dev/auth/providers/Password";
 import { Phone } from "@convex-dev/auth/providers/Phone";
 import { normalizeBdPhone } from "../lib/phone";
 
@@ -67,7 +68,7 @@ const PhoneOTP = Phone({
   },
 });
 
-const providers = [Google, EmailOTP, PhoneOTP];
+const providers = [Password, Google, EmailOTP, PhoneOTP];
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers,
