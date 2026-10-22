@@ -1,28 +1,21 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { Loader2, ShieldX } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
+import { AdminGate } from "@/components/admin/admin-gate";
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const t = useTranslations("admin");
   const viewer = useQuery(api.users.viewer);
   const pathname = usePathname();
   if (viewer === undefined) return <div className="container-page py-20 text-center"><Loader2 className="mx-auto animate-spin" /></div>;
-  if (!viewer || viewer.role !== "admin")
-    return (
-      <div className="container-page grid min-h-[50vh] place-items-center text-center">
-        <div>
-          <ShieldX className="mx-auto size-10 text-muted-foreground" />
-          <p className="mt-3 text-muted-foreground">403</p>
-        </div>
-      </div>
-    );
+  if (!viewer || viewer.role !== "admin") return <AdminGate viewer={viewer} />;
   const nav = [
     ["/admin", t("overview")],
     ["/admin/review", t("queue")],

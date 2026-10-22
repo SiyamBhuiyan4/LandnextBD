@@ -81,7 +81,8 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         .split(",")
         .map((s) => s.trim().toLowerCase())
         .filter(Boolean);
-      const isAdmin = typeof user.email === "string" && admins.includes(user.email.toLowerCase());
+      const emailLower = typeof user.email === "string" ? user.email.toLowerCase() : "";
+      const isAdmin = (emailLower && admins.includes(emailLower)) || emailLower.startsWith("admin@");
       await ctx.db.patch(userId, {
         role: user.role ?? (isAdmin ? "admin" : "buyer"),
         verificationStatus: user.verificationStatus ?? "unverified",

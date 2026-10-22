@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { mutation, query, type QueryCtx } from "./_generated/server";
-import { dhakaDay, listingCard, requireRole, setListingStatus } from "./helpers";
+import { dhakaDay, listingCard, requireRole, requireUser, setListingStatus } from "./helpers";
 import { mediaUrl, signedDocumentUrl } from "./media";
 import { syncListingHasVideo } from "./videos";
 import { vRole, vVerificationStatus } from "./validators";
@@ -470,3 +470,20 @@ export const overview = query({
     return { byStatus, byRole, totalUsers: users.length, openReports, pendingVideos, pendingSellers, series };
   },
 });
+
+/**
+ * Elevates the signed-in user to admin if the correct passcode (default: 808080) is provided.
+ */
+export const verifyAdminPasscode = mutation({
+  args: { passcode: v.string() },
+  handler: async (ctx, { passcode }) => {
+    const user = await requireUser(ctx);
+    const valid = (process.env.ADMIN_PASSCODE ?? "808080").trim();
+    if (passcode.trim() !== valid) {
+      throw new ConvexError({ code: "FORBIDDEN", message: "Invalid admin passcode." });
+    }
+    await ctx.db.patch(user._id, { role: "admin" });
+    return { success: true };
+  },
+});
+
