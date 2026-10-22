@@ -82,7 +82,7 @@ export const revealContact = query({
     return {
       phone: isOwner ? (seller?.phone ?? companyPhone) : companyPhone,
       email: isOwner ? (seller?.email ?? companyEmail) : companyEmail,
-      companyName: "LandnestBD Verified Concierge",
+      companyName: "land.db Verified Concierge",
       exactAddress: listing.exactAddress ?? null,
       plotNumber: listing.plotNumber ?? null,
       lat: listing.lat ?? null,

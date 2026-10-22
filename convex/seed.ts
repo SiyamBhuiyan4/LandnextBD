@@ -152,7 +152,7 @@ export const run = internalMutation({
         `The plot is ${FACING_LABEL[facing].toLowerCase()} with a ${roadWidthFt} ft access road${sectorBlock ? ` in ${sectorBlock}` : ""}.`,
         utilities.length ? `Utilities on site: ${utilities.join(", ")}.` : "Utility connections can be arranged.",
         docs ? "Deed, khatian and mutation papers are ready for inspection." : "Documents will be shared with serious buyers.",
-        "Sample listing generated for the LandnestBD demo.",
+        "Sample listing for demonstration purposes.",
       ].join(" ");
 
       const id = await ctx.db.insert("listings", {

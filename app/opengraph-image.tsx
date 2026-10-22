@@ -33,7 +33,7 @@ export default function OpengraphImage() {
           <div style={{ fontSize: 76, fontWeight: 800, lineHeight: 1.05, letterSpacing: -2 }}>Land & plots for sale in Bangladesh</div>
           <div style={{ marginTop: 24, fontSize: 32, opacity: 0.85 }}>Verified listings · photos · documents checklist · walkthrough videos</div>
         </div>
-        <div style={{ display: "flex", fontSize: 26, color: "#e9a93c", fontWeight: 700 }}>by LandnestBD</div>
+        <div style={{ display: "flex", fontSize: 26, color: "#e9a93c", fontWeight: 700 }}>by land.db</div>
       </div>
     ),
     size,
