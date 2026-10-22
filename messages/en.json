@@ -916,6 +916,14 @@
     "costPrice": "Listed price",
     "costFees": "Registration & mutation (~{pct}%)",
     "costTotal": "Estimated total",
-    "costNote": "Estimate only. Actual fees depend on the sub-registry office and the land's value. Confirm before you pay."
+    "costNote": "Estimate only. Actual fees depend on the sub-registry office and the land's value. Confirm before you pay.",
+    "nearbyTitle": "Nearby land",
+    "nearbyBody": "Plots around this one, nearest first. Choose how far you are willing to look.",
+    "nearbyRadius": "Within",
+    "nearbyKm": "{n} km",
+    "nearbyType": "Land type",
+    "nearbyAnyType": "Any type",
+    "nearbyAway": "{km} km away · {place}",
+    "nearbyEmpty": "No other active land within {n} km. Try a wider radius."
   }
 }

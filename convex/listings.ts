@@ -387,6 +387,111 @@ export const areaInsight = query({
   },
 });
 
+/** Great-circle distance in km. Used to rank nearby land without an external service. */
+function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number) {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(bLat - aLat);
+  const dLng = toRad(bLng - aLng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+export const NEARBY_RADII_KM = [5, 10, 20, 40, 80] as const;
+
+/**
+ * Active land within `radiusKm` of a listing, nearest first. Coarse-filters on
+ * the geohash index (same trick as the map), then measures each candidate
+ * exactly, so no geo service is involved.
+ */
+export const nearby = query({
+  args: {
+    listingId: v.id("listings"),
+    radiusKm: v.optional(v.number()),
+    landType: v.optional(vLandType),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, { listingId, radiusKm, landType, limit }) => {
+    const origin = await ctx.db.get(listingId);
+    if (!origin || origin.lat === undefined || origin.lng === undefined) return [];
+    const radius = Math.min(Math.max(radiusKm ?? 20, 1), 200);
+    const max = Math.min(limit ?? 12, 24);
+
+    // Bounding box that contains the circle, then geohash prefixes covering it.
+    const dLat = radius / 111.32;
+    const cos = Math.max(Math.cos((origin.lat * Math.PI) / 180), 0.01);
+    const dLng = radius / (111.32 * cos);
+    const box = { south: origin.lat - dLat, north: origin.lat + dLat, west: origin.lng - dLng, east: origin.lng + dLng };
+
+    let hashes: string[] = [];
+    for (let p = 6; p >= 1; p--) {
+      hashes = ngeohash.bboxes(box.south, box.west, box.north, box.east, p);
+      if (hashes.length <= 16) break;
+    }
+
+    const seen = new Set<string>([origin._id]);
+    const found: { listing: Doc<"listings">; distanceKm: number }[] = [];
+    for (const h of hashes) {
+      const rows = await ctx.db
+        .query("listings")
+        .withIndex("by_geohash", (q) => q.eq("status", "active").gte("geohash", h).lt("geohash", h + "{"))
+        .take(200);
+      for (const l of rows) {
+        if (seen.has(l._id) || l.lat === undefined || l.lng === undefined) continue;
+        if (landType && l.landType !== landType) continue;
+        const distanceKm = haversineKm(origin.lat, origin.lng, l.lat, l.lng);
+        if (distanceKm > radius) continue;
+        seen.add(l._id);
+        found.push({ listing: l, distanceKm });
+      }
+    }
+
+    found.sort((a, b) => a.distanceKm - b.distanceKm);
+    return Promise.all(
+      found.slice(0, max).map(async ({ listing, distanceKm }) => ({
+        ...(await listingCard(ctx, listing)),
+        distanceKm: Math.round(distanceKm * 10) / 10,
+      })),
+    );
+  },
+});
+
+/** How many active listings sit in each radius band, for the radius picker. */
+export const nearbyCounts = query({
+  args: { listingId: v.id("listings"), landType: v.optional(vLandType) },
+  handler: async (ctx, { listingId, landType }) => {
+    const origin = await ctx.db.get(listingId);
+    if (!origin || origin.lat === undefined || origin.lng === undefined) return null;
+    const widest = NEARBY_RADII_KM[NEARBY_RADII_KM.length - 1];
+    const dLat = widest / 111.32;
+    const cos = Math.max(Math.cos((origin.lat * Math.PI) / 180), 0.01);
+    const dLng = widest / (111.32 * cos);
+
+    let hashes: string[] = [];
+    for (let p = 6; p >= 1; p--) {
+      hashes = ngeohash.bboxes(origin.lat - dLat, origin.lng - dLng, origin.lat + dLat, origin.lng + dLng, p);
+      if (hashes.length <= 16) break;
+    }
+
+    const seen = new Set<string>([origin._id]);
+    const counts: Record<number, number> = Object.fromEntries(NEARBY_RADII_KM.map((r) => [r, 0]));
+    for (const h of hashes) {
+      const rows = await ctx.db
+        .query("listings")
+        .withIndex("by_geohash", (q) => q.eq("status", "active").gte("geohash", h).lt("geohash", h + "{"))
+        .take(200);
+      for (const l of rows) {
+        if (seen.has(l._id) || l.lat === undefined || l.lng === undefined) continue;
+        if (landType && l.landType !== landType) continue;
+        seen.add(l._id);
+        const d = haversineKm(origin.lat, origin.lng, l.lat, l.lng);
+        for (const r of NEARBY_RADII_KM) if (d <= r) counts[r]++;
+      }
+    }
+    return counts;
+  },
+});
+
 export const related = query({
   args: { listingId: v.id("listings"), limit: v.optional(v.number()) },
   handler: async (ctx, { listingId, limit }) => {

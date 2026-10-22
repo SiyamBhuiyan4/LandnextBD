@@ -21,8 +21,9 @@ import { useFmt } from "@/hooks/use-fmt";
 import { errorMessage, readLocal, sessionId, writeLocal } from "@/lib/client";
 import { RECENT_KEY, type RecentItem } from "@/components/home/recently-viewed";
 import { CostEstimate } from "@/components/listings/cost-estimate";
+import { NearbyListings } from "@/components/listings/nearby-listings";
 import { DOCUMENT_TYPES, REPORT_REASONS, type ReportReason } from "@/lib/constants";
-import { districtName } from "@/lib/places";
+import { districtName, divisionName } from "@/lib/places";
 import { allUnits } from "@/lib/units";
 import { landTypeToSlug, listingHref } from "@/lib/urls";
 import { cn } from "@/lib/utils";
@@ -545,13 +546,21 @@ export function ListingDetail({ preloaded }: { preloaded: Preloaded<typeof api.l
           >
             {t("similar")}
           </SectionTitle>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mb-4 flex flex-wrap gap-1.5">
+            <SimilarTag>{tl(l.landType)}</SimilarTag>
+            <SimilarTag>{areaLabel}</SimilarTag>
+            <SimilarTag>{district}</SimilarTag>
+            <SimilarTag>{divisionName(l.division, locale)}</SimilarTag>
+          </div>
+          <div className="stagger-in grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {similar.slice(0, 8).map((s) => (
               <ListingCard key={s._id} l={s} saved={!!savedIds?.includes(s._id)} />
             ))}
           </div>
         </section>
       )}
+
+      <NearbyListings listingId={l._id} savedIds={savedIds} />
 
       {/* Mobile sticky contact bar */}
       {canContact && (
@@ -832,4 +841,9 @@ function AreaPriceInsight({ listingId, sizeSqft, unit }: { listingId: Id<"listin
       </p>
     </aside>
   );
+}
+
+/** A place or land-type chip above the similar grid, saying why these were picked. */
+function SimilarTag({ children }: { children: React.ReactNode }) {
+  return <span className="rounded-full border bg-surface px-2.5 py-1 text-xs font-medium text-muted-foreground">{children}</span>;
 }
