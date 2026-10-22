@@ -77,8 +77,11 @@ export const revealContact = query({
       if (!inquiry) return null;
     }
     const seller = await ctx.db.get(listing.sellerId);
-    const companyPhone = process.env.COMPANY_PHONE ?? seller?.phone ?? "+8801700000000";
-    const companyEmail = process.env.COMPANY_EMAIL ?? seller?.email ?? "contact@landnestbd.com";
+    // Buyers reach the seller through our own number, never their personal one.
+    // No fallback to the seller's details: an unset COMPANY_PHONE must hide the
+    // number, not leak it.
+    const companyPhone = process.env.COMPANY_PHONE ?? null;
+    const companyEmail = process.env.COMPANY_EMAIL ?? null;
     return {
       phone: isOwner ? (seller?.phone ?? companyPhone) : companyPhone,
       email: isOwner ? (seller?.email ?? companyEmail) : companyEmail,
@@ -103,7 +106,8 @@ export const mine = query({
     return Promise.all(
       rows.map(async (i) => {
         const l = await ctx.db.get(i.listingId);
-        // Same rule as revealContact: a buyer who inquired may see the seller's number.
+        // Same rule as revealContact: the buyer gets our concierge number, never
+        // the seller's personal one, and only the seller's display name.
         const seller = l ? await ctx.db.get(l.sellerId) : null;
         return {
           _id: i._id,
@@ -113,7 +117,7 @@ export const mine = query({
           repliedAt: i.repliedAt,
           listing: l ? await listingCard(ctx, l) : null,
           sellerName: seller ? (seller.companyName ?? seller.name ?? null) : null,
-          sellerPhone: seller?.phone ?? null,
+          sellerPhone: process.env.COMPANY_PHONE ?? null,
         };
       }),
     );
