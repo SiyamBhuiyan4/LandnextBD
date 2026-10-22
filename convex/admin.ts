@@ -472,14 +472,15 @@ export const overview = query({
 });
 
 /**
- * Elevates the signed-in user to admin if the correct passcode (default: 808080) is provided.
+ * Elevates the signed-in user to admin if the correct ADMIN_PASSCODE is provided.
  */
 export const verifyAdminPasscode = mutation({
   args: { passcode: v.string() },
   handler: async (ctx, { passcode }) => {
     const user = await requireUser(ctx);
-    const valid = (process.env.ADMIN_PASSCODE ?? "808080").trim();
-    if (passcode.trim() !== valid) {
+    const valid = (process.env.ADMIN_PASSCODE ?? "").trim();
+    // No default: admin unlock stays closed until ADMIN_PASSCODE is set on the deployment.
+    if (!valid || passcode.trim() !== valid) {
       throw new ConvexError({ code: "FORBIDDEN", message: "Invalid admin passcode." });
     }
     await ctx.db.patch(user._id, { role: "admin" });
