@@ -132,7 +132,7 @@ export function AdminGate({ viewer }: ViewerProps) {
                     inputMode="numeric"
                     autoFocus
                     autoComplete="current-password"
-                    placeholder="Enter passcode (808080)"
+                    placeholder="Enter admin passcode"
                     value={passcode}
                     onChange={(e) => setPasscode(e.target.value)}
                     className={inputCls}
@@ -193,7 +193,7 @@ export function AdminGate({ viewer }: ViewerProps) {
                 <input
                   type="password"
                   autoComplete="current-password"
-                  placeholder="808080"
+                  placeholder="Admin passcode"
                   value={passcode}
                   onChange={(e) => setPasscode(e.target.value)}
                   className={inputCls}

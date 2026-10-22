@@ -214,7 +214,8 @@
     "howStep2Body": "Shortlist plots, compare them side by side and watch walkthroughs.",
     "howStep3Title": "Contact & verify",
     "howStep3Body": "Send an inquiry, visit the land and verify papers at the land office.",
-    "ctaFree": "Free to post · Reviewed by our team"
+    "ctaFree": "Free to post · Reviewed by our team",
+    "recentlyViewed": "Recently viewed"
   },
   "browse": {
     "title": "Land & plots for sale",
@@ -820,7 +821,8 @@
     "latLng": "Lat/Lng",
     "documents": "Documents",
     "open": "Open",
-    "confirmUnpublish": "Take this listing down? The seller is notified with your reason."
+    "confirmUnpublish": "Take this listing down? The seller is notified with your reason.",
+    "backToSite": "Back to site"
   },
   "footer": {
     "about": "A modern marketplace for land and plots in Bangladesh.",
@@ -896,6 +898,12 @@
     "promotionRequested": "Promotion requested",
     "viewInquiries": "Inquiries ({count})",
     "myListings": "My listings",
-    "expiresOn": "expires {date}"
+    "expiresOn": "expires {date}",
+    "insightTitle": "Area price check",
+    "insightAtMedian": "Priced in line with similar land in this area.",
+    "insightBelow": "About {pct}% below the area median price.",
+    "insightAbove": "About {pct}% above the area median price.",
+    "insightMedian": "Area median: {price} per {unit} · based on {count} active listings",
+    "insightCapped": "+"
   }
 }

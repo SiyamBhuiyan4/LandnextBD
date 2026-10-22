@@ -106,6 +106,7 @@ export function BrowseView({
   const locale = useLocale();
   const pathname = usePathname();
   const sp = useSearchParams();
+  const router = useRouter();
   const urlFilters = useMemo(() => filtersFromSearchParams(new URLSearchParams(sp.toString())), [sp]);
   const filterKey = filtersToSearchParams(urlFilters).toString();
   const useInitial = filterKey === initialKey;
@@ -145,11 +146,11 @@ export function BrowseView({
     if (fixedArea) delete next.area;
     if (fixedType) delete next.landType;
     const qs = filtersToSearchParams(next).toString();
-    // Native history keeps useSearchParams in sync without a server round trip, and
-    // gives every filter change its own Back step.
-    window.history.pushState(null, "", qs ? `${pathname}?${qs}` : pathname);
+    // replace (not push, not raw pushState): filter changes must not add Back steps that
+    // swallow the user's real Back press, and the Next router must know about the new URL.
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   };
-  const clear = () => window.history.pushState(null, "", pathname);
+  const clear = () => router.replace(pathname, { scroll: false });
 
   // Infinite scroll
   const sentinel = useRef<HTMLDivElement>(null);

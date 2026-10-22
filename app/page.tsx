@@ -11,6 +11,7 @@ import {
   VerifiedSellers,
   VideosStrip,
 } from "@/components/home/home-sections";
+import { RecentlyViewed } from "@/components/home/recently-viewed";
 import { SITE_URL, jsonLdHtml, organization } from "@/lib/seo";
 
 export const metadata: Metadata = { alternates: { canonical: "/" } };
@@ -42,6 +43,7 @@ export default function HomePage() {
       <FeaturedCarousel />
       <PopularAreas />
       <NewestGrid />
+      <RecentlyViewed />
       <TrustSection />
       <VideosStrip />
       <VerifiedSellers />

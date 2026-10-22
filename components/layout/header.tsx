@@ -177,6 +177,8 @@ const NAV = [
 export function Header() {
   const t = useTranslations("common");
   const pathname = usePathname();
+  const viewer = useQuery(api.users.viewer);
+  const isAdmin = viewer?.role === "admin";
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [pathname]);
 
@@ -191,7 +193,7 @@ export function Header() {
           <Wordmark />
         </Link>
         <nav className="ml-6 hidden items-center gap-1 md:flex" aria-label={t("mainNav")}>
-          {NAV.map((n) => (
+          {[...NAV, ...(isAdmin ? [{ href: "/admin", key: "admin" }] : [])].map((n) => (
             <Link
               key={n.href}
               href={n.href}
@@ -223,6 +225,11 @@ export function Header() {
                 <span className="sr-only">{t("menu")}</span>
               </SheetTitle>
               <nav className="flex flex-col gap-0.5 p-2" aria-label={t("menu")}>
+                {isAdmin && (
+                  <Link href="/admin" className={cn("flex items-center gap-3 rounded-xl px-3 py-3 font-medium hover:bg-muted", pathname.startsWith("/admin") && "bg-secondary font-semibold text-secondary-foreground")}>
+                    <Shield className="size-4.5 text-primary" aria-hidden /> {t("admin")}
+                  </Link>
+                )}
                 {MOBILE_NAV.map(({ href, key, Icon }) => (
                   <Link
                     key={href}

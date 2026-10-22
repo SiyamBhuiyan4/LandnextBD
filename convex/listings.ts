@@ -360,6 +360,33 @@ export const getBySlug = query({
   },
 });
 
+/**
+ * Price context for a listing: median price per sqft of active listings in the same area.
+ * Returns null when there are too few comparables to say anything fair.
+ */
+export const areaInsight = query({
+  args: { listingId: v.id("listings") },
+  handler: async (ctx, { listingId }) => {
+    const l = await ctx.db.get(listingId);
+    if (!l) return null;
+    const LIMIT = 200;
+    const rows = await ctx.db
+      .query("listings")
+      .withIndex("by_status_area_published", (q) => q.eq("status", "active").eq("areaId", l.areaId))
+      .take(LIMIT);
+    const vals = rows.map((r) => r.pricePerSqft).filter((n) => n > 0).sort((a, b) => a - b);
+    if (vals.length < 3 || l.pricePerSqft <= 0) return null;
+    const mid = vals.length >> 1;
+    const median = vals.length % 2 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
+    return {
+      count: vals.length,
+      capped: rows.length === LIMIT,
+      medianPerSqft: median,
+      diffPct: Math.round(((l.pricePerSqft - median) / median) * 100),
+    };
+  },
+});
+
 export const related = query({
   args: { listingId: v.id("listings"), limit: v.optional(v.number()) },
   handler: async (ctx, { listingId, limit }) => {

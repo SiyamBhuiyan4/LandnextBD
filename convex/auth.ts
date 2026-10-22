@@ -77,12 +77,14 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       if (existingUserId) return;
       const user = await ctx.db.get(userId);
       if (!user) return;
+      // Admin by email only when the address is verified. Password sign-up
+      // does not verify ownership, so anyone could claim an admin address.
       const admins = (process.env.ADMIN_EMAILS ?? "")
         .split(",")
         .map((s) => s.trim().toLowerCase())
         .filter(Boolean);
       const emailLower = typeof user.email === "string" ? user.email.toLowerCase() : "";
-      const isAdmin = (emailLower && admins.includes(emailLower)) || emailLower.startsWith("admin@");
+      const isAdmin = user.emailVerificationTime !== undefined && emailLower !== "" && admins.includes(emailLower);
       await ctx.db.patch(userId, {
         role: user.role ?? (isAdmin ? "admin" : "buyer"),
         verificationStatus: user.verificationStatus ?? "unverified",

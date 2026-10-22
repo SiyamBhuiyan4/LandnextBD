@@ -18,11 +18,12 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { VideoThumb } from "@/components/video/video-card";
 import { useFmt } from "@/hooks/use-fmt";
-import { errorMessage, sessionId } from "@/lib/client";
+import { errorMessage, readLocal, sessionId, writeLocal } from "@/lib/client";
+import { RECENT_KEY, type RecentItem } from "@/components/home/recently-viewed";
 import { DOCUMENT_TYPES, REPORT_REASONS, type ReportReason } from "@/lib/constants";
 import { districtName } from "@/lib/places";
 import { allUnits } from "@/lib/units";
-import { landTypeToSlug } from "@/lib/urls";
+import { landTypeToSlug, listingHref } from "@/lib/urls";
 import { cn } from "@/lib/utils";
 
 const MiniMap = dynamic(() => import("@/components/listings/mini-map"), { ssr: false, loading: () => <div className="h-64 animate-pulse bg-muted sm:h-80" /> });
@@ -104,6 +105,11 @@ export function ListingDetail({ preloaded }: { preloaded: Preloaded<typeof api.l
 
   useEffect(() => {
     if (l?.status === "active" && !l.viewer.isOwner) void recordView({ listingId: l._id, sessionId: sessionId() }).catch(() => {});
+    if (l) {
+      const item = { id: l._id, href: listingHref(l), title: l.title, area: l.areaName };
+      const prev = readLocal<RecentItem[]>(RECENT_KEY, []).filter((r) => r.id !== item.id);
+      writeLocal(RECENT_KEY, [item, ...prev].slice(0, 12));
+    }
   }, [l?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Hide the mobile contact bar while the full contact panel or the footer is on screen.
@@ -299,6 +305,7 @@ export function ListingDetail({ preloaded }: { preloaded: Preloaded<typeof api.l
               <Fact icon={<WallIcon size={20} />} label={t("boundaryWall")} value={l.hasBoundaryWall ? tc("yes") : tc("no")} />
               <Fact icon={<Hash className="size-5" />} label={t("plotNumber")} value={revealed?.plot ?? td2("sharedAfterInquiry")} muted={!revealed?.plot} />
             </dl>
+            <AreaPriceInsight listingId={l._id} sizeSqft={l.sizeSqft} unit={unitKatha} />
             <details className="group mt-3 rounded-xl border bg-card px-4 py-3 text-sm">
               <summary className="flex cursor-pointer list-none items-center gap-2 font-medium">
                 <Ruler className="size-4 text-primary" aria-hidden /> {t("allSizes")}
@@ -795,5 +802,32 @@ function ReportDialog({ listingId, open, onOpenChange }: { listingId: Id<"listin
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function AreaPriceInsight({ listingId, sizeSqft, unit }: { listingId: Id<"listings">; sizeSqft: number; unit: string }) {
+  const td = useTranslations("listingDetail");
+  const fmt = useFmt();
+  const insight = useQuery(api.listings.areaInsight, { listingId });
+  if (!insight) return null;
+  const { diffPct, medianPerSqft, count, capped } = insight;
+  const tone = Math.abs(diffPct) <= 5 ? "text-muted-foreground" : diffPct < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400";
+  const message =
+    Math.abs(diffPct) <= 5
+      ? td("insightAtMedian")
+      : diffPct < 0
+        ? td("insightBelow", { pct: fmt.digits(Math.abs(diffPct)) })
+        : td("insightAbove", { pct: fmt.digits(diffPct) });
+  return (
+    <aside className="mt-3 rounded-xl border bg-card px-4 py-3 text-sm" aria-label={td("insightTitle")}>
+      <p className="flex items-center gap-2 font-medium">
+        <BadgeCheck className="size-4 text-primary" aria-hidden /> {td("insightTitle")}
+      </p>
+      <p className={`mt-1 ${tone}`}>{message}</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {td("insightMedian", { price: fmt.perUnit(medianPerSqft * sizeSqft, sizeSqft, "katha"), unit, count: fmt.digits(count) })}
+        {capped ? td("insightCapped") : ""}
+      </p>
+    </aside>
   );
 }
