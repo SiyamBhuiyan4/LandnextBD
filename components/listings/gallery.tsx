@@ -276,6 +276,21 @@ function Lightbox({
   const thumbs = useRef<HTMLDivElement>(null);
   const item = index !== null ? items[index] : null;
 
+  // Sliding is for steps between neighbours. A wrap (last -> first) or a
+  // thumbnail jump would otherwise sweep across every slide, so those land
+  // instantly and sliding resumes on the next frame.
+  const [slideAnim, setSlideAnim] = useState(true);
+  const lastIndex = useRef(index);
+  useEffect(() => {
+    const prev = lastIndex.current;
+    lastIndex.current = index;
+    if (index === null || prev === null) return;
+    if (Math.abs(index - prev) <= 1) return;
+    setSlideAnim(false);
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => setSlideAnim(true)));
+    return () => cancelAnimationFrame(id);
+  }, [index]);
+
   const go = useCallback(
     (d: number) => {
       setZoom(NO_ZOOM);
@@ -422,8 +437,38 @@ function Lightbox({
                     }
                   }}
                 >
-                  <div className="absolute inset-0 transition-transform duration-200 ease-out" style={{ transform: `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.s})` }}>
-                    <Image key={item.key} src={item.src} alt={altFor(item, index)} fill sizes="100vw" loading="eager" fetchPriority="high" className="object-contain" placeholder="blur" blurDataURL={BLUR} />
+                  {/* All slides sit side by side and the strip slides, so photos
+                      glide in instead of the old image unmounting and the new
+                      one flashing its placeholder. */}
+                  <div
+                    className="flex h-full w-full"
+                    style={{
+                      transform: `translateX(-${index * 100}%)`,
+                      transition: slideAnim ? "transform 320ms cubic-bezier(0.22, 1, 0.36, 1)" : "none",
+                    }}
+                  >
+                    {items.map((it, i) => (
+                      <div key={it.key} className="relative h-full w-full shrink-0">
+                        {it.kind === "photo" && Math.abs(i - index) <= 1 && (
+                          <div
+                            className="absolute inset-0 transition-transform duration-200 ease-out"
+                            style={i === index ? { transform: `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.s})` } : undefined}
+                          >
+                            <Image
+                              src={it.src}
+                              alt={i === index ? altFor(it, i) : ""}
+                              fill
+                              sizes="100vw"
+                              loading="eager"
+                              fetchPriority={i === index ? "high" : "low"}
+                              className="object-contain"
+                              placeholder="blur"
+                              blurDataURL={BLUR}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               ) : (
