@@ -231,6 +231,16 @@ export default defineSchema({
 
   // ---- supporting tables (not in the original spec, needed for features) ----
 
+  // One row, recomputed by cron. The home page reads this instead of
+  // counting every listing and video on each visit.
+  siteStats: defineTable({
+    activeListings: v.number(),
+    areasCovered: v.number(),
+    verifiedListings: v.number(),
+    videos: v.number(),
+    computedAt: v.number(),
+  }),
+
   // Fixed-window rate limiter keyed by e.g. "inquiry:<userId>".
   rateLimits: defineTable({
     key: v.string(),

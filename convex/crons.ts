@@ -9,5 +9,9 @@ crons.daily("saved search alerts", { hourUTC: 2, minuteUTC: 0 }, internal.savedS
 crons.hourly("clean up abandoned uploads", { minuteUTC: 15 }, internal.media.cleanupAbandoned, {});
 crons.hourly("sweep orphan storage and restart stalled pushes", { minuteUTC: 30 }, internal.media.cleanupOrphanStorage, {});
 crons.hourly("fail stuck video jobs", { minuteUTC: 45 }, internal.videos.failStuck, {});
+// Keeps the home counters fresh without counting on every visit.
+crons.interval("recompute site stats", { minutes: 30 }, internal.listings.recomputeStats, {});
+// rateLimits and dailyStats grow forever unless closed rows are dropped.
+crons.daily("purge expired rows", { hourUTC: 21, minuteUTC: 30 }, internal.listings.purgeExpired, {});
 
 export default crons;

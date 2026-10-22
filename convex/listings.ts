@@ -263,11 +263,56 @@ export const newest = query({
 });
 
 /** Live numbers for the home stats strip. */
+/**
+ * Drops rows that have served their purpose: rate-limit windows that have
+ * closed, and daily stats older than the 90 days the dashboard charts.
+ * Both tables grow forever otherwise.
+ */
+export const purgeExpired = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    // The longest window any caller uses is a day, so anything older is closed.
+    const limitCutoff = now - 25 * 60 * 60 * 1000;
+    let limits = 0;
+    for (const r of await ctx.db.query("rateLimits").take(5000)) {
+      if (r.windowStart < limitCutoff) {
+        await ctx.db.delete(r._id);
+        limits++;
+      }
+    }
+
+    const dayCutoff = new Date(now - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    let days = 0;
+    for (const r of await ctx.db.query("dailyStats").take(5000)) {
+      if (r.day < dayCutoff) {
+        await ctx.db.delete(r._id);
+        days++;
+      }
+    }
+    return { rateLimits: limits, dailyStats: days };
+  },
+});
+
+/** Home counters. Reads the cached row; recomputed by cron, not per visit. */
 export const stats = query({
   args: {},
   handler: async (ctx) => {
+    const row = await ctx.db.query("siteStats").first();
+    return {
+      activeListings: row?.activeListings ?? 0,
+      areasCovered: row?.areasCovered ?? 0,
+      verifiedListings: row?.verifiedListings ?? 0,
+      videos: row?.videos ?? 0,
+    };
+  },
+});
+
+/** Counts everything once and stores the result for `stats` to serve. */
+export const recomputeStats = internalMutation({
+  args: {},
+  handler: async (ctx) => {
     const areas = await ctx.db.query("areas").collect();
-    const active = areas.reduce((s, a) => s + a.activeCount, 0);
     const verified = await ctx.db
       .query("listings")
       .withIndex("by_status_featured", (q) => q.eq("status", "active"))
@@ -277,12 +322,17 @@ export const stats = query({
       .query("videos")
       .withIndex("by_status", (q) => q.eq("status", "ready"))
       .take(10000);
-    return {
-      activeListings: active,
+    const next = {
+      activeListings: areas.reduce((sum, a) => sum + a.activeCount, 0),
       areasCovered: areas.filter((a) => a.activeCount > 0).length,
       verifiedListings: verified.length,
       videos: videos.filter((x) => x.listingActive && x.moderation === "approved").length,
+      computedAt: Date.now(),
     };
+    const row = await ctx.db.query("siteStats").first();
+    if (row) await ctx.db.patch(row._id, next);
+    else await ctx.db.insert("siteStats", next);
+    return next;
   },
 });
 
