@@ -52,7 +52,7 @@ export function SignInForm() {
     setBusy(true);
     try {
       await signIn("password", {
-        email: email.trim().toLowerCase(),
+        email: email.trim(),
         password,
         flow: mode,
         ...(mode === "signUp" ? { name: name.trim() } : {}),
@@ -60,7 +60,7 @@ export function SignInForm() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Authentication failed.";
       if (mode === "signIn") {
-        toast.error("Invalid email or password. If you don't have an account, click 'Sign Up'.");
+        toast.error("Wrong details. Check your email or mobile number and password, or tap Sign up.");
       } else {
         toast.error(msg || "Could not create account. Please check your details.");
       }
@@ -78,7 +78,7 @@ export function SignInForm() {
       </h1>
       <p className="mt-1 text-center text-sm text-muted-foreground">
         {mode === "signIn"
-          ? "Sign in to contact sellers and access verified land details"
+          ? "Use your email or Bangladeshi mobile number"
           : "Sign up to start inquiring, saving, and posting properties"}
       </p>
 
@@ -126,12 +126,13 @@ export function SignInForm() {
           </label>
         )}
         <label className="block text-sm font-medium">
-          Email or Username
+          Email or mobile number
           <input
             className={inputCls}
-            type="email"
-            autoComplete="email"
-            placeholder="you@example.com"
+            type="text"
+            inputMode="email"
+            autoComplete="username"
+            placeholder="you@example.com or 01XXXXXXXXX"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required

@@ -68,7 +68,23 @@ const PhoneOTP = Phone({
   },
 });
 
-const providers = [Password, Google, EmailOTP, PhoneOTP];
+// One password account per identifier. The identifier is an email address, or a
+// Bangladeshi mobile number, so people without email can still sign in. A phone
+// identifier is normalized to +8801XXXXXXXXX and also stored in `phone`.
+const PasswordAuth = Password({
+  profile(params) {
+    const raw = String(params.email ?? "").trim();
+    const phone = normalizeBdPhone(raw);
+    const out: Record<string, string> & { email: string } = phone
+      ? { email: phone, phone }
+      : { email: raw.toLowerCase() };
+    const name = typeof params.name === "string" ? params.name.trim() : "";
+    if (name) out.name = name;
+    return out;
+  },
+});
+
+const providers = [PasswordAuth, Google, EmailOTP, PhoneOTP];
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers,
