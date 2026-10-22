@@ -6,7 +6,8 @@ import { FacilityIcon, LandTypeIcons, UtilityIcons } from "@/components/icons";
 import { LocationPicker } from "@/components/search/location-picker";
 import { Slider } from "@/components/ui/slider";
 import { useFmt } from "@/hooks/use-fmt";
-import { ACCOUNT_TYPES, FACILITIES, FACINGS, LAND_TYPES, POSTED_WITHIN_DAYS, PRICE_BUCKETS, PRICE_SLIDER_MAX, SIZE_FILTER_UNITS, UTILITIES } from "@/lib/constants";
+import { ACCOUNT_TYPES, FACILITIES, FACINGS, LAND_TYPES, POSTED_WITHIN_DAYS, PRICE_SLIDER_MAX, SIZE_FILTER_UNITS, UTILITIES } from "@/lib/constants";
+import { describeBudget, parseBudget } from "@/lib/price-input";
 import { readLocal, writeLocal } from "@/lib/client";
 import { fromSqft, toSqft, trimNumber, type SizeUnit } from "@/lib/units";
 import type { BrowseFilters } from "@/lib/urls";
@@ -180,7 +181,6 @@ export function FilterPanel({
   counts?: FacetCounts;
 }) {
   const ts = useTranslations("sellerType");
-  const tp = useTranslations("priceBucket");
   const t = useTranslations("browse");
   const tl = useTranslations("landType");
   const tf = useTranslations("facing");
@@ -223,16 +223,11 @@ export function FilterPanel({
           format={(n, isMax) => (isMax && n >= PRICE_SLIDER_MAX ? `${fmt.price(n, false)}+` : fmt.price(n, false))}
           thumbLabels={[t("minPriceLabel"), t("maxPriceLabel")]}
         />
-        <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label={t("priceRanges")}>
-          {PRICE_BUCKETS.map((b) => {
-            const on = filters.minPrice === b.min && filters.maxPrice === b.max;
-            return (
-              <Chip key={b.key} active={on} onClick={() => set(on ? { minPrice: undefined, maxPrice: undefined } : { minPrice: b.min, maxPrice: b.max })}>
-                {tp(b.key)} <Count n={counts ? (counts.price[b.key] ?? 0) : undefined} />
-              </Chip>
-            );
-          })}
-        </div>
+        <BudgetFields
+          min={filters.minPrice}
+          max={filters.maxPrice}
+          onCommit={(minPrice, maxPrice) => set({ minPrice, maxPrice })}
+        />
       </Group>
 
       <Group title={t("postedBy")}>
@@ -317,6 +312,60 @@ export function FilterPanel({
           ))}
         </div>
       </Group>
+    </div>
+  );
+}
+
+/**
+ * Type a budget instead of picking a band. Anything people actually write
+ * works: "2000", "1,50,000", "25 lakh", "2.5cr", "২৫ লাখ".
+ */
+function BudgetFields({ min, max, onCommit }: { min?: number; max?: number; onCommit: (min?: number, max?: number) => void }) {
+  const t = useTranslations("browse");
+  const [lo, setLo] = useState(min ? String(min) : "");
+  const [hi, setHi] = useState(max ? String(max) : "");
+  useEffect(() => setLo(min ? String(min) : ""), [min]);
+  useEffect(() => setHi(max ? String(max) : ""), [max]);
+
+  const commit = () => {
+    const a = parseBudget(lo) ?? undefined;
+    const b = parseBudget(hi) ?? undefined;
+    // A pair typed the wrong way round is still a range; read it that way.
+    onCommit(a !== undefined && b !== undefined && a > b ? b : a, a !== undefined && b !== undefined && a > b ? a : b);
+  };
+
+  const cls = "h-10 w-full rounded-lg border bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40";
+  const field = (id: string, label: string, value: string, setValue: (v: string) => void) => {
+    const parsed = parseBudget(value);
+    return (
+      <div className="min-w-0 flex-1">
+        <label htmlFor={id} className="mb-1 block text-xs font-medium text-muted-foreground">
+          {label}
+        </label>
+        <input
+          id={id}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          className={cls}
+          placeholder={t("budgetPlaceholder")}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), commit())}
+        />
+        <p className="mt-1 h-4 text-[11px] text-primary">{parsed ? describeBudget(parsed) : ""}</p>
+      </div>
+    );
+  };
+
+  return (
+    <div className="mt-3">
+      <div className="flex items-start gap-2">
+        {field("flt-price-min", t("minPriceLabel"), lo, setLo)}
+        {field("flt-price-max", t("maxPriceLabel"), hi, setHi)}
+      </div>
+      <p className="text-[11px] text-muted-foreground">{t("budgetHint")}</p>
     </div>
   );
 }

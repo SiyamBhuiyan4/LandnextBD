@@ -6,7 +6,8 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { AreaCombobox, type AreaOption } from "@/components/search/area-combobox";
 import { Button } from "@/components/ui/button";
-import { LAND_TYPES, PRICE_BUCKETS, SIZE_BUCKETS_KATHA, type LandType } from "@/lib/constants";
+import { LAND_TYPES, SIZE_BUCKETS_KATHA, type LandType } from "@/lib/constants";
+import { describeBudget, parseBudget } from "@/lib/price-input";
 import { toSqft } from "@/lib/units";
 import { cn } from "@/lib/utils";
 
@@ -16,13 +17,13 @@ const selectCls =
 export function HeroSearch() {
   const t = useTranslations("home");
   const tl = useTranslations("landType");
-  const tp = useTranslations("priceBucket");
   const tsz = useTranslations("sizeBucket");
   const tc = useTranslations("common");
   const router = useRouter();
   const [area, setArea] = useState<AreaOption | null>(null);
   const [type, setType] = useState<LandType | "">("");
   const [price, setPrice] = useState("");
+  const parsedBudget = parseBudget(price);
   const [size, setSize] = useState("");
 
   const submit = (e: React.FormEvent) => {
@@ -30,9 +31,8 @@ export function HeroSearch() {
     const sp = new URLSearchParams();
     if (area) sp.set("area", area.slug);
     if (type) sp.set("landType", type);
-    const pb = PRICE_BUCKETS.find((b) => b.key === price);
-    if (pb?.min) sp.set("minPrice", String(pb.min));
-    if (pb?.max) sp.set("maxPrice", String(pb.max));
+    const budget = parseBudget(price);
+    if (budget) sp.set("maxPrice", String(budget));
     const sb = SIZE_BUCKETS_KATHA.find((b) => b.key === size);
     if (sb?.min) sp.set("minSqft", String(toSqft(sb.min, "katha")));
     if (sb?.max) sp.set("maxSqft", String(toSqft(sb.max, "katha")));
@@ -76,14 +76,27 @@ export function HeroSearch() {
       {field(
         t("searchBudget"),
         "hero-price",
-        <select id="hero-price" className={selectCls} value={price} onChange={(e) => setPrice(e.target.value)}>
-          <option value="">{t("anyPrice")}</option>
-          {PRICE_BUCKETS.map((b) => (
-            <option key={b.key} value={b.key}>
-              {tp(b.key)}
-            </option>
-          ))}
-        </select>,
+        <div className="relative">
+          <input
+            id="hero-price"
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            className={cn(selectCls, "cursor-text")}
+            placeholder={t("budgetPlaceholder")}
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            aria-describedby="hero-price-hint"
+          />
+          <span id="hero-price-hint" className="sr-only">
+            {t("budgetHint")}
+          </span>
+          {parsedBudget && (
+            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-primary">
+              {describeBudget(parsedBudget)}
+            </span>
+          )}
+        </div>,
       )}
       {field(
         t("searchSize"),

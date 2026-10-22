@@ -215,7 +215,9 @@
     "howStep3Title": "যোগাযোগ ও যাচাই",
     "howStep3Body": "জিজ্ঞাসা পাঠান, সরেজমিনে দেখুন এবং ভূমি অফিসে কাগজ যাচাই করুন।",
     "ctaFree": "পোস্ট করা ফ্রি · আমাদের টিম পর্যালোচনা করে",
-    "recentlyViewed": "সম্প্রতি দেখা"
+    "recentlyViewed": "সম্প্রতি দেখা",
+    "budgetPlaceholder": "যেমন ২৫ লাখ",
+    "budgetHint": "যেকোনো অঙ্ক লিখুন: ২০০০, ১,৫০,০০০, ২৫ লাখ বা ২.৫ কোটি।"
   },
   "browse": {
     "title": "বিক্রয়ের জন্য জমি ও প্লট",
@@ -296,7 +298,9 @@
     "searchKeyword": "“{q}” খুঁজুন",
     "resultsCapped": "{count}+টি বিজ্ঞাপন",
     "inArea": "{place}-এ",
-    "typesInArea": "এখানে জমির ধরন"
+    "typesInArea": "এখানে জমির ধরন",
+    "budgetPlaceholder": "যেমন ২৫ লাখ",
+    "budgetHint": "যেকোনো অঙ্ক লিখুন: ২০০০, ১,৫০,০০০, ২৫ লাখ বা ২.৫ কোটি।"
   },
   "listing": {
     "price": "দাম",

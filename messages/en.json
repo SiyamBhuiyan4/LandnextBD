@@ -215,7 +215,9 @@
     "howStep3Title": "Contact & verify",
     "howStep3Body": "Send an inquiry, visit the land and verify papers at the land office.",
     "ctaFree": "Free to post · Reviewed by our team",
-    "recentlyViewed": "Recently viewed"
+    "recentlyViewed": "Recently viewed",
+    "budgetPlaceholder": "e.g. 25 lakh",
+    "budgetHint": "Type any amount: 2000, 1,50,000, 25 lakh or 2.5 crore."
   },
   "browse": {
     "title": "Land & plots for sale",
@@ -296,7 +298,9 @@
     "searchKeyword": "Search “{q}”",
     "resultsCapped": "{count}+ listings",
     "inArea": "in {place}",
-    "typesInArea": "Land types here"
+    "typesInArea": "Land types here",
+    "budgetPlaceholder": "e.g. 25 lakh",
+    "budgetHint": "Type any amount: 2000, 1,50,000, 25 lakh or 2.5 crore."
   },
   "listing": {
     "price": "Price",
