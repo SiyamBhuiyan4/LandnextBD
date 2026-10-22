@@ -3,10 +3,11 @@
 import { useQuery } from "convex/react";
 import { MapPin, Search } from "lucide-react";
 import { useLocale } from "next-intl";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useFmt } from "@/hooks/use-fmt";
+import { searchAreas } from "@/lib/area-search";
 import { districtName } from "@/lib/places";
 import { cn } from "@/lib/utils";
 
@@ -34,20 +35,24 @@ export function AreaCombobox({
   const [text, setText] = useState(value ? name(value) : "");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  const [debounced, setDebounced] = useState("");
   const listId = useId();
   const wrap = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const h = setTimeout(() => setDebounced(text), 150);
-    return () => clearTimeout(h);
-  }, [text]);
   useEffect(() => {
     setText(value ? name(value) : "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value?._id, locale]);
 
-  const results = useQuery(api.areas.autocomplete, open ? { q: value && text === name(value) ? "" : debounced, limit: 8 } : "skip");
+  // The whole area list is small, so it loads once and every keystroke is
+  // matched locally: no debounce, no request per character.
+  const all = useQuery(api.areas.all, open ? {} : "skip");
+  const typed = value && text === name(value) ? "" : text;
+  const results = useMemo(() => {
+    if (!all) return undefined;
+    return typed.trim()
+      ? searchAreas(all, typed, 8)
+      : [...all].sort((a, b) => b.activeCount - a.activeCount || a.areaName.localeCompare(b.areaName)).slice(0, 8);
+  }, [all, typed]);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => !wrap.current?.contains(e.target as Node) && setOpen(false);

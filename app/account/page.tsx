@@ -138,7 +138,7 @@ export default function AccountPage() {
                 value={nid}
                 onChange={(e) => setNid(e.target.value.replace(/\D/g, "").slice(0, 17))}
               />
-              <span className="mt-1 block text-xs font-normal text-muted-foreground">Required to contact land.db and inquire about properties.</span>
+              <span className="mt-1 block text-xs font-normal text-muted-foreground">Required to contact LandnestBD and inquire about properties.</span>
             </label>
             <Button
               variant="outline"

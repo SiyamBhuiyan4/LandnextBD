@@ -1,7 +1,7 @@
 // Shared enums and config used by both the Next.js app and Convex functions.
 
 /** Site name shown to visitors, and the company behind it. */
-export const BRAND = { site: "land.db", company: "LandnestBD" } as const;
+export const BRAND = { site: "LandnestBD", company: "LandnestBD" } as const;
 
 export const LAND_TYPES = ["residential", "commercial", "mixed_use", "industrial", "farmland", "quarry"] as const;
 export type LandType = (typeof LAND_TYPES)[number];

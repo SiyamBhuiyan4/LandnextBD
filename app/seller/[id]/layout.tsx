@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const name = p.companyName ?? p.name;
   return {
     title: `${name} — land listings`,
-    description: `${p.listings.length} land listings by ${name}${p.verificationStatus === "verified" ? " (verified seller)" : ""} on land.db.`,
+    description: `${p.listings.length} land listings by ${name}${p.verificationStatus === "verified" ? " (verified seller)" : ""} on LandnestBD.`,
     alternates: { canonical: `/seller/${id}` },
   };
 }

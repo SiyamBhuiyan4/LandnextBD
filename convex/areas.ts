@@ -1,6 +1,8 @@
+import ngeohash from "ngeohash";
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
-import { query } from "./_generated/server";
+import { internalMutation, query } from "./_generated/server";
+import { DISTRICTS, districtSlug } from "../lib/districts";
 
 export const autocomplete = query({
   args: { q: v.string(), limit: v.optional(v.number()) },
@@ -79,3 +81,37 @@ function shape(a: Doc<"areas">) {
     activeCount: a.activeCount,
   };
 }
+
+/**
+ * Makes sure every one of Bangladesh's 64 districts exists as a selectable
+ * area, so a seller can always find their district even where no finer area
+ * has been added yet. Idempotent: existing rows are left alone.
+ */
+export const seedDistricts = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let created = 0;
+    for (const d of DISTRICTS) {
+      const slug = districtSlug(d.name);
+      const existing = await ctx.db
+        .query("areas")
+        .withIndex("by_slug", (q) => q.eq("slug", slug))
+        .unique();
+      if (existing) continue;
+      await ctx.db.insert("areas", {
+        division: d.division,
+        district: d.name,
+        upazila: d.name,
+        areaName: d.name,
+        areaNameBn: d.nameBn,
+        slug,
+        geohash: ngeohash.encode(d.lat, d.lng, 7),
+        centerLat: d.lat,
+        centerLng: d.lng,
+        activeCount: 0,
+      });
+      created++;
+    }
+    return { created, total: DISTRICTS.length };
+  },
+});

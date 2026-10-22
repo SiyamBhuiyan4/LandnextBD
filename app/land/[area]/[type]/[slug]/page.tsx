@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     title: l.title,
     description,
     alternates: { canonical: listingHref(l) },
-    openGraph: { siteName: "land.db", title: l.title, description, type: "article", url: listingHref(l), images: image ? [{ url: image, width: 1280, height: 853, alt: l.title }] : [] },
+    openGraph: { siteName: "LandnestBD", title: l.title, description, type: "article", url: listingHref(l), images: image ? [{ url: image, width: 1280, height: 853, alt: l.title }] : [] },
     twitter: { card: "summary_large_image", title: l.title, description, images: image ? [image] : [] },
     robots: l.status === "active" ? undefined : { index: false },
   };

@@ -25,7 +25,7 @@ const homeJsonLd = {
       "@type": "WebSite",
       "@id": `${SITE_URL}/#website`,
       url: SITE_URL,
-      name: "land.db",
+      name: "LandnestBD",
       publisher: { "@id": organization["@id"] },
       inLanguage: ["en", "bn"],
       potentialAction: { "@type": "SearchAction", target: { "@type": "EntryPoint", urlTemplate: `${SITE_URL}/browse?q={search_term_string}` }, "query-input": "required name=search_term_string" },

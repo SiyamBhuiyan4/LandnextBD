@@ -188,7 +188,7 @@ export function Header() {
         {t("skipToContent")}
       </a>
       <div className="container-page flex h-16 items-center gap-3">
-        <Link href="/" className="flex items-center gap-2 font-heading text-lg font-bold tracking-tight" aria-label={t("homeLink", { site: "land.db" })}>
+        <Link href="/" className="flex items-center gap-2 font-heading text-lg font-bold tracking-tight" aria-label={t("homeLink", { site: "LandnestBD" })}>
           <LogoMark size={30} />
           <Wordmark />
         </Link>

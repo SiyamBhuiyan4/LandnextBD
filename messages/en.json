@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "land.db",
+    "appName": "LandnestBD",
     "tagline": "Land & plots across Bangladesh",
     "search": "Search",
     "signIn": "Sign in",
@@ -336,7 +336,7 @@
     "watchVideos": "Watch videos",
     "videosCount": "{count, plural, one {# video} other {# videos}}",
     "allSizes": "Size in other units",
-    "disclaimer": "land.db is a listing service. We do not own or sell land. Always verify the deed, khatian and mutation at the sub-registry and AC (Land) office before paying any money.",
+    "disclaimer": "LandnestBD is a listing service. We do not own or sell land. Always verify the deed, khatian and mutation at the sub-registry and AC (Land) office before paying any money.",
     "reportTitle": "Report this listing",
     "reportReason": "Reason",
     "reportDetails": "Details (optional)",
@@ -391,7 +391,7 @@
     "quality": "Quality"
   },
   "auth": {
-    "title": "Welcome to land.db",
+    "title": "Welcome to LandnestBD",
     "subtitle": "Sign in with a one-time code — no password needed.",
     "email": "Email",
     "phone": "Mobile",
@@ -406,7 +406,7 @@
     "or": "or",
     "devHint": "Dev mode: the code is printed in the Convex logs.",
     "invalidCode": "That code didn't work. Check it and try again.",
-    "terms": "By continuing you agree to use land.db responsibly and verify documents before any payment.",
+    "terms": "By continuing you agree to use LandnestBD responsibly and verify documents before any payment.",
     "resend": "Didn't get it? Send again",
     "resendIn": "Send again in {s}s",
     "sendFailed": "Could not send the code. Please try again.",
@@ -558,7 +558,7 @@
     "soldToast": "Marked as sold",
     "renewedToast": "Sent for renewal review",
     "empty": {
-      "title": "Sell your land on land.db",
+      "title": "Sell your land on LandnestBD",
       "body": "Buyers across Bangladesh search for land here. Posting is free and takes about 5 minutes.",
       "step1": "Tell us the size, price and area",
       "step2": "Add photos and a short video",
@@ -687,7 +687,7 @@
     "done": {
       "submittedTitle": "Submitted for review!",
       "savedTitle": "Changes saved",
-      "submittedBody": "Thank you! Our team checks every listing to keep land.db safe. This usually takes less than 24 hours.",
+      "submittedBody": "Thank you! Our team checks every listing to keep LandnestBD safe. This usually takes less than 24 hours.",
       "savedBody": "Your changes are saved and visible on your listing.",
       "nextTitle": "What happens next",
       "next1": "We check the details, photos and papers.",
@@ -834,10 +834,10 @@
   "footer": {
     "about": "A modern marketplace for land and plots in Bangladesh.",
     "disclaimerTitle": "Before you pay",
-    "disclaimer": "land.db is only a listing platform. Verify every document at the sub-registry office and AC (Land) office, and never pay an advance before verification.",
+    "disclaimer": "LandnestBD is only a listing platform. Verify every document at the sub-registry office and AC (Land) office, and never pay an advance before verification.",
     "explore": "Explore",
     "sell": "Sell",
-    "rights": "© {year} LandnestBD · land.db. Sample data shown for demonstration.",
+    "rights": "© {year} LandnestBD · LandnestBD. Sample data shown for demonstration.",
     "landTypes": "Land types",
     "popularAreas": "Popular areas",
     "company": "Company",

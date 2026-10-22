@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     title: `${v.title} — ${v.listing?.title ?? "Land video"}`,
     description: v.listing ? `${v.listing.areaName} · walkthrough video` : undefined,
     alternates: { canonical: `/watch/${id}` },
-    openGraph: { siteName: "land.db", type: "video.other", images: image ? [image] : [] },
+    openGraph: { siteName: "LandnestBD", type: "video.other", images: image ? [image] : [] },
   };
 }
 

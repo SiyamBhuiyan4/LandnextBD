@@ -29,9 +29,9 @@ const EmailOTP = Email({
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: process.env.AUTH_EMAIL_FROM ?? "land.db <onboarding@resend.dev>",
+        from: process.env.AUTH_EMAIL_FROM ?? "LandnestBD <onboarding@resend.dev>",
         to: [email],
-        subject: `Your land.db sign-in code: ${token}`,
+        subject: `Your LandnestBD sign-in code: ${token}`,
         text: `Your sign-in code is ${token}. It expires in 15 minutes.\n\nআপনার সাইন-ইন কোড ${token}। ১৫ মিনিটের মধ্যে মেয়াদ শেষ হবে।`,
       }),
     });
@@ -62,7 +62,7 @@ const PhoneOTP = Phone({
         Authorization: "Basic " + btoa(`${sid}:${auth}`),
         "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: new URLSearchParams({ To: phone, From: from, Body: `land.db code: ${token}` }),
+      body: new URLSearchParams({ To: phone, From: from, Body: `LandnestBD code: ${token}` }),
     });
     if (!res.ok) throw new Error(`Could not send SMS: ${await res.text()}`);
   },

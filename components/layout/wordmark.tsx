@@ -1,12 +1,13 @@
 import { BRAND } from "@/lib/constants";
 
-/** Text logo: "land" + accent ".db". Restyle here to change it everywhere. */
+/** Text logo: "Landnest" + accent "BD". Restyle here to change it everywhere. */
 export function Wordmark() {
-  const [name, tld] = BRAND.site.split(".");
+  const name = BRAND.site;
+  const tail = name.endsWith("BD") ? "BD" : "";
   return (
     <span>
-      {name}
-      <span className="text-warm">.{tld}</span>
+      {tail ? name.slice(0, -tail.length) : name}
+      {tail && <span className="text-warm">{tail}</span>}
     </span>
   );
 }

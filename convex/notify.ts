@@ -14,7 +14,7 @@ export const sendEmail = internalAction({
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: process.env.AUTH_EMAIL_FROM ?? "land.db <onboarding@resend.dev>",
+        from: process.env.AUTH_EMAIL_FROM ?? "LandnestBD <onboarding@resend.dev>",
         to: [to],
         subject,
         text,
