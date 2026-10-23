@@ -9,6 +9,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { LogoMark } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import { normalizeBdPhone } from "@/lib/phone";
 
 const inputCls = "h-11 w-full rounded-xl border bg-background px-3 text-[15px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40";
 
@@ -44,25 +45,47 @@ export function SignInForm() {
 
   const handlePasswordAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return;
-    if (mode === "signUp" && !name) {
+    const cleanId = email.trim();
+    if (!cleanId || !password) return;
+
+    if (mode === "signUp" && !name.trim()) {
       toast.error("Please enter your name.");
       return;
     }
+
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanId);
+    const isPhone = !!normalizeBdPhone(cleanId);
+    if (!isEmail && !isPhone) {
+      toast.error("Please enter a valid email address or 11-digit Bangladeshi mobile number (e.g. 017XXXXXXXX).");
+      return;
+    }
+
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters.");
+      return;
+    }
+
     setBusy(true);
     try {
       await signIn("password", {
-        email: email.trim(),
+        email: cleanId,
         password,
         flow: mode,
         ...(mode === "signUp" ? { name: name.trim() } : {}),
       });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Authentication failed.";
+      const raw = err instanceof Error ? err.message : String(err);
       if (mode === "signIn") {
         toast.error("Wrong details. Check your email or mobile number and password, or tap Sign up.");
       } else {
-        toast.error(msg || "Could not create account. Please check your details.");
+        if (raw.toLowerCase().includes("already exists")) {
+          toast.error("An account with this email or mobile number already exists. Please tap Sign in.");
+          setMode("signIn");
+        } else if (raw.toLowerCase().includes("password")) {
+          toast.error("Password must be at least 6 characters.");
+        } else {
+          toast.error("Could not create account. Please check your details and try again.");
+        }
       }
       setBusy(false);
     }
@@ -145,7 +168,7 @@ export function SignInForm() {
             className={inputCls}
             type="password"
             autoComplete={mode === "signIn" ? "current-password" : "new-password"}
-            placeholder="••••••••"
+            placeholder="At least 6 characters"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required

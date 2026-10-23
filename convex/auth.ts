@@ -72,6 +72,11 @@ const PhoneOTP = Phone({
 // Bangladeshi mobile number, so people without email can still sign in. A phone
 // identifier is normalized to +8801XXXXXXXXX and also stored in `phone`.
 const PasswordAuth = Password({
+  validatePasswordRequirements(password: string) {
+    if (!password || password.length < 6) {
+      throw new Error("Password must be at least 6 characters.");
+    }
+  },
   profile(params) {
     const raw = String(params.email ?? "").trim();
     const phone = normalizeBdPhone(raw);
