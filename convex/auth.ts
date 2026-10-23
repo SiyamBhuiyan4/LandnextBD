@@ -98,16 +98,11 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       if (existingUserId) return;
       const user = await ctx.db.get(userId);
       if (!user) return;
-      // Admin by email only when the address is verified. Password sign-up
-      // does not verify ownership, so anyone could claim an admin address.
-      const admins = (process.env.ADMIN_EMAILS ?? "")
-        .split(",")
-        .map((s) => s.trim().toLowerCase())
-        .filter(Boolean);
-      const emailLower = typeof user.email === "string" ? user.email.toLowerCase() : "";
-      const isAdmin = user.emailVerificationTime !== undefined && emailLower !== "" && admins.includes(emailLower);
+      // All new users start as buyer. Admin role cannot be assigned on signup
+      // or sign-in; admin access is strictly governed by the master passcode.
+      const role = user.role && user.role !== "admin" ? user.role : "buyer";
       await ctx.db.patch(userId, {
-        role: user.role ?? (isAdmin ? "admin" : "buyer"),
+        role,
         verificationStatus: user.verificationStatus ?? "unverified",
         accountType: user.accountType ?? "owner",
         createdAt: user.createdAt ?? Date.now(),

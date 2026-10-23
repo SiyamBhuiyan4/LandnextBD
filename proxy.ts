@@ -5,7 +5,7 @@ import {
 } from "@convex-dev/auth/nextjs/server";
 
 // Optimistic redirects only. Real authorization happens inside every Convex function.
-const isProtected = createRouteMatcher(["/dashboard(.*)", "/admin(.*)", "/account(.*)", "/saved(.*)", "/inquiries(.*)"]);
+export const isProtected = createRouteMatcher(["/dashboard(.*)", "/account(.*)", "/saved(.*)", "/inquiries(.*)"]);
 const isSignIn = createRouteMatcher(["/signin"]);
 
 export default convexAuthNextjsMiddleware(

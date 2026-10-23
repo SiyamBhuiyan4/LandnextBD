@@ -8,7 +8,7 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { useFmt } from "@/hooks/use-fmt";
 import { errorMessage } from "@/lib/client";
-import { ROLES, type Role } from "@/lib/constants";
+import { ASSIGNABLE_USER_ROLES, ROLES, type Role } from "@/lib/constants";
 
 type Verif = "unverified" | "pending" | "verified" | "rejected";
 const VERIFS: Verif[] = ["unverified", "pending", "verified", "rejected"];
@@ -74,13 +74,19 @@ export default function AdminUsers() {
                   )}
                 </td>
                 <td className="px-3 py-2.5">
-                  <select className={sel} value={u.role} onChange={(e) => run(update({ id: u._id, role: e.target.value as Role }))}>
-                    {ROLES.map((r) => (
-                      <option key={r} value={r}>
-                        {ta(`roles.${r}`)}
-                      </option>
-                    ))}
-                  </select>
+                  {u.role === "admin" ? (
+                    <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
+                      {ta("roles.admin")}
+                    </span>
+                  ) : (
+                    <select className={sel} value={u.role} onChange={(e) => run(update({ id: u._id, role: e.target.value as Role }))} aria-label={ta("role")}>
+                      {ASSIGNABLE_USER_ROLES.map((r) => (
+                        <option key={r} value={r}>
+                          {ta(`roles.${r}`)}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </td>
                 <td className="px-3 py-2.5">
                   <select className={sel} value={u.verificationStatus} onChange={(e) => run(update({ id: u._id, verificationStatus: e.target.value as Verif }))}>

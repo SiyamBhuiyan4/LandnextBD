@@ -170,3 +170,38 @@ describe("videos", () => {
     expect(own[0]).toMatchObject({ status: "ready", durationSec: 30 });
   });
 });
+
+describe("admin user management security", () => {
+  it("rejects assigning admin role to any user via updateUser", async () => {
+    const { as, buyer, admin } = await setup();
+    await expect(
+      as(admin).mutation(api.admin.updateUser, { id: buyer, role: "admin" })
+    ).rejects.toThrow(/Admin role cannot be assigned to users/i);
+  });
+
+  it("verifyAdminPasscode correctly validates passcode 808080 and promotes user", async () => {
+    const { t, as, buyer } = await setup();
+
+    // Wrong passcode fails
+    await expect(
+      as(buyer).mutation(api.admin.verifyAdminPasscode, { passcode: "wrongpass" })
+    ).rejects.toThrow(/Invalid admin passcode/i);
+
+    const before = await t.run((ctx) => ctx.db.get(buyer));
+    expect(before?.role).toBe("buyer");
+
+    // Correct passcode 808080 succeeds
+    const result = await as(buyer).mutation(api.admin.verifyAdminPasscode, { passcode: "808080" });
+    expect(result).toEqual({ success: true });
+
+    const after = await t.run((ctx) => ctx.db.get(buyer));
+    expect(after?.role).toBe("admin");
+  });
+
+  it("verifyAdminPasscode rejects unauthenticated callers", async () => {
+    const { t } = await setup();
+    await expect(
+      t.mutation(api.admin.verifyAdminPasscode, { passcode: "808080" })
+    ).rejects.toThrow(/sign in/i);
+  });
+});

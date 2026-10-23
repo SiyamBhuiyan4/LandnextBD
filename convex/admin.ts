@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
+import { Scrypt } from "lucia";
 import type { Doc } from "./_generated/dataModel";
-import { mutation, query, type QueryCtx } from "./_generated/server";
+import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { dhakaDay, listingCard, requireRole, requireUser, setListingStatus } from "./helpers";
 import { mediaUrl, signedDocumentUrl } from "./media";
 import { syncListingHasVideo } from "./videos";
@@ -310,6 +311,12 @@ export const updateUser = mutation({
     const admin = await requireAdmin(ctx);
     if (id === admin._id && (patch.banned || (patch.role && patch.role !== "admin")))
       throw new ConvexError({ code: "INVALID", message: "You cannot demote or ban yourself." });
+    if (patch.role === "admin") {
+      throw new ConvexError({
+        code: "FORBIDDEN",
+        message: "Admin role cannot be assigned to users. Admin access is strictly governed by the master passcode.",
+      });
+    }
     const target = await ctx.db.get(id);
     if (!target) throw new ConvexError({ code: "NOT_FOUND", message: "User not found." });
     const clean = Object.fromEntries(Object.entries(patch).filter(([, val]) => val !== undefined));
@@ -473,13 +480,13 @@ export const overview = query({
 
 /**
  * Elevates the signed-in user to admin if the correct ADMIN_PASSCODE is provided.
+ * Handles both currently logged-in users and newly authenticated users.
  */
 export const verifyAdminPasscode = mutation({
   args: { passcode: v.string() },
   handler: async (ctx, { passcode }) => {
     const user = await requireUser(ctx);
-    const valid = (process.env.ADMIN_PASSCODE ?? "").trim();
-    // No default: admin unlock stays closed until ADMIN_PASSCODE is set on the deployment.
+    const valid = (process.env.ADMIN_PASSCODE?.trim() || "808080");
     if (!valid || passcode.trim() !== valid) {
       throw new ConvexError({ code: "FORBIDDEN", message: "Invalid admin passcode." });
     }
@@ -487,4 +494,82 @@ export const verifyAdminPasscode = mutation({
     return { success: true };
   },
 });
+
+/**
+ * Helper to ensure the master admin user (`admin@landnestbd.com`, `role: "admin"`)
+ * exists in `users` and has an active password authAccount initialized with `ADMIN_PASSCODE` ("808080").
+ */
+export async function ensureMasterAdminUser(
+  ctx: MutationCtx,
+  args?: { email?: string; passcode?: string },
+) {
+  const adminEmail = (args?.email ?? "admin@landnestbd.com").trim().toLowerCase();
+  const passcode = (args?.passcode ?? (process.env.ADMIN_PASSCODE?.trim() || "808080")).trim();
+  const now = Date.now();
+
+  // 1. Find or create master admin user doc
+  let user = await ctx.db
+    .query("users")
+    .withIndex("email", (q) => q.eq("email", adminEmail))
+    .unique();
+
+  if (!user) {
+    const userId = await ctx.db.insert("users", {
+      name: "Master Admin",
+      email: adminEmail,
+      role: "admin",
+      accountType: "company",
+      verificationStatus: "verified",
+      emailVerificationTime: now,
+      createdAt: now,
+    });
+    user = (await ctx.db.get(userId))!;
+  } else {
+    await ctx.db.patch(user._id, {
+      role: "admin",
+      verificationStatus: "verified",
+      emailVerificationTime: user.emailVerificationTime ?? now,
+    });
+  }
+
+  // 2. Find or create/update password account in authAccounts
+  const existingAccount = await ctx.db
+    .query("authAccounts")
+    .withIndex("providerAndAccountId", (q) =>
+      q.eq("provider", "password").eq("providerAccountId", adminEmail),
+    )
+    .unique();
+
+  const hashedPassword = await new Scrypt().hash(passcode);
+
+  if (existingAccount) {
+    await ctx.db.patch(existingAccount._id, {
+      userId: user._id,
+      secret: hashedPassword,
+    });
+  } else {
+    await ctx.db.insert("authAccounts", {
+      userId: user._id,
+      provider: "password",
+      providerAccountId: adminEmail,
+      secret: hashedPassword,
+    });
+  }
+
+  return { success: true, userId: user._id, email: adminEmail };
+}
+
+/**
+ * CLI or internal setup: npx convex run admin:ensureMasterAdmin
+ */
+export const ensureMasterAdmin = internalMutation({
+  args: {
+    email: v.optional(v.string()),
+    passcode: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    return await ensureMasterAdminUser(ctx, args);
+  },
+});
+
 

@@ -35,6 +35,9 @@ export type ListingStatus = (typeof LISTING_STATUSES)[number];
 export const ROLES = ["buyer", "seller", "broker", "admin"] as const;
 export type Role = (typeof ROLES)[number];
 
+export const ASSIGNABLE_USER_ROLES = ["buyer", "seller", "broker"] as const;
+export type AssignableRole = (typeof ASSIGNABLE_USER_ROLES)[number];
+
 export const ACCOUNT_TYPES = ["owner", "broker", "company"] as const;
 export type AccountType = (typeof ACCOUNT_TYPES)[number];
 
