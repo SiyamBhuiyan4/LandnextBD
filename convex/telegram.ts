@@ -210,9 +210,17 @@ export const deleteMessage = internalAction({
 
 /** Returns the file's download path (valid for at least one hour). Server-side only. */
 export async function resolveFilePath(fileId: string): Promise<string | null> {
-  const res = await fetch(`${API}/bot${token()}/getFile?file_id=${encodeURIComponent(fileId)}`);
-  const body = (await res.json()) as TgResponse<{ file_path?: string }>;
-  return body.ok ? (body.result?.file_path ?? null) : null;
+  const t = token();
+  if (!t) return null;
+  try {
+    const res = await fetch(`${API}/bot${t}/getFile?file_id=${encodeURIComponent(fileId)}`);
+    if (!res.ok) return null;
+    const body = (await res.json()) as TgResponse<{ file_path?: string }>;
+    return body.ok ? (body.result?.file_path ?? null) : null;
+  } catch (err) {
+    console.error(`[telegram] resolveFilePath failed fileId=${fileId}: ${scrub(String(err))}`);
+    return null;
+  }
 }
 
 export function fileDownloadUrl(path: string) {

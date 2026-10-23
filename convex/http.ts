@@ -32,60 +32,53 @@ const serveMedia = httpAction(async (ctx, req) => {
     if (!valid) return new Response("Link expired", { status: 403 });
   }
 
+  const asciiName = (m.fileName ?? m._id).replace(/[^\w.\- ]/g, "_");
+  const encodedName = encodeURIComponent(m.fileName ?? m._id);
   const headers = new Headers({
     "Content-Type": m.mimeType,
     "X-Content-Type-Options": "nosniff",
     "Accept-Ranges": "bytes",
     "Access-Control-Allow-Origin": "*",
     "Cache-Control": isDoc ? "private, no-store" : "public, max-age=31536000, immutable",
-    "Content-Disposition": `${isDoc ? "attachment" : "inline"}; filename="${(m.fileName ?? m._id).replace(/[^\w.\- ]/g, "_")}"`,
+    "Content-Disposition": `${isDoc ? "attachment" : "inline"}; filename="${asciiName}"; filename*=UTF-8''${encodedName}`,
   });
 
-  if (m.parts) return servePart(ctx, m._id, m.parts, req.headers.get("range"), headers);
-
   const range = req.headers.get("range");
-  let upstream: Response | null = null;
-  try {
-    if (m.tgFileId) {
-      let path = m.tgFilePath ?? (await resolveFilePath(m.tgFileId));
-      if (path) {
-        upstream = await fetch(fileDownloadUrl(path), { headers: range ? { Range: range } : {} });
-        if (upstream.status === 404 || upstream.status === 401) {
-          // cached path expired: resolve once more
-          path = await resolveFilePath(m.tgFileId);
-          upstream = path ? await fetch(fileDownloadUrl(path), { headers: range ? { Range: range } : {} }) : null;
-        }
-        // Write only when the path changed: a mutation per request would cost a function call each time.
-        if (path && upstream?.ok && path !== m.tgFilePath) await ctx.runMutation(internal.media.cacheFilePath, { id: m._id, path });
-      }
-    } else if (m.storageUrl) {
-      upstream = await fetch(m.storageUrl, { headers: range ? { Range: range } : {} });
-    }
-  } catch (err) {
-    console.error(`[media] fetch failed media=${m._id}: ${scrub(String(err))}`);
-    return new Response("Upstream error", { status: 502 });
-  }
-  if (!upstream || !upstream.ok) {
-    console.error(`[media] upstream ${upstream?.status ?? "none"} media=${m._id}`);
-    return new Response("Not available", { status: 502 });
-  }
+  const parts: Part[] = m.parts ?? [
+    {
+      size: m.size,
+      storageId: m.storageId,
+      storageUrl: m.storageUrl,
+      tgFileId: m.tgFileId,
+      tgFilePath: m.tgFilePath,
+    },
+  ];
 
-  for (const h of ["content-length", "content-range"]) {
-    const val = upstream.headers.get(h);
-    if (val) headers.set(h, val);
-  }
-  return new Response(upstream.body, { status: upstream.status, headers });
+  return servePart(ctx, m._id, parts, range, headers, !!m.parts);
 });
 
-type Part = { size: number; storageId?: Id<"_storage">; tgFileId?: string; tgFilePath?: string };
+type Part = {
+  size: number;
+  storageId?: Id<"_storage">;
+  storageUrl?: string | null;
+  tgFileId?: string;
+  tgFilePath?: string;
+};
 
 /**
- * Multi-part file (big video stored on Telegram as ≤ 19 MB parts). Each
- * response covers at most the rest of ONE part: always 206 with a
- * Content-Range, so players simply request the next range when they need it.
- * A request without Range gets part 0 (or 200 when the file is one part).
+ * Multi-part or single-part media file. Byte-range requests (videos seeking,
+ * Safari streaming probe, PDF viewing) return 206 Partial Content with
+ * Content-Range and sliced stream. Requests without Range get status 200
+ * when the file is one part (or part 0 when multi-part).
  */
-async function servePart(ctx: ActionCtx, id: Id<"media">, parts: Part[], rangeHeader: string | null, headers: Headers) {
+async function servePart(
+  ctx: ActionCtx,
+  id: Id<"media">,
+  parts: Part[],
+  rangeHeader: string | null,
+  headers: Headers,
+  isMulti: boolean = true,
+) {
   const sizes = parts.map((p) => p.size);
   const total = sizes.reduce((a, b) => a + b, 0);
   const range = parseRange(rangeHeader, total);
@@ -115,12 +108,20 @@ async function servePart(ctx: ActionCtx, id: Id<"media">, parts: Part[], rangeHe
         console.error(`[media] upstream ${upstream?.status ?? "none"} media=${id} part=${slice.index}`);
         return new Response("Not available", { status: 502 });
       }
-      if (path !== part.tgFilePath) await ctx.runMutation(internal.media.cachePartPath, { id, index: slice.index, path });
+      if (path !== part.tgFilePath) {
+        if (isMulti) await ctx.runMutation(internal.media.cachePartPath, { id, index: slice.index, path });
+        else await ctx.runMutation(internal.media.cacheFilePath, { id, path });
+      }
       // Telegram ignored the Range header: cut the requested bytes out of the full part.
       body = upstream.status === 206 || wholePart ? upstream.body : sliceStream(upstream.body, slice.partStart, length);
     } else if (part.storageId) {
       const blob = await ctx.storage.get(part.storageId);
-      body = blob ? blob.slice(slice.partStart, slice.partEnd + 1) : null;
+      body = blob ? (wholePart ? blob : blob.slice(slice.partStart, slice.partEnd + 1)) : null;
+    } else if (part.storageUrl) {
+      const upstream = await fetch(part.storageUrl, { headers: wholePart ? {} : { Range: partRange } });
+      if (upstream?.ok && upstream.body) {
+        body = upstream.status === 206 || wholePart ? upstream.body : sliceStream(upstream.body, slice.partStart, length);
+      }
     }
   } catch (err) {
     console.error(`[media] fetch failed media=${id} part=${slice.index}: ${scrub(String(err))}`);

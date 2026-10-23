@@ -2,7 +2,7 @@ import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { bumpDailyStat, getViewer, isAdmin, requireListingOwner } from "./helpers";
 import { deleteMedia, mediaUrl } from "./media";
 import { vLandType } from "./validators";
@@ -378,5 +378,215 @@ export const failStuck = internalMutation({
       await ctx.db.patch(s._id, { status: "failed", errorMessage: "Processing timed out" });
     }
     return stuck.length;
+  },
+});
+
+/**
+ * Attaches a walkthrough video harvested from Telegram to a listing.
+ * Registers media and video rows with status: "ready", moderation: "approved",
+ * provider: "telegram", resolutions: ["720p"], and syncs listing.hasVideo = true.
+ */
+export const linkTelegramVideo = internalMutation({
+  args: {
+    listingId: v.id("listings"),
+    fileId: v.string(),
+    fileUniqueId: v.optional(v.string()),
+    originalMessageId: v.optional(v.number()),
+    durationSec: v.number(),
+    width: v.optional(v.number()),
+    height: v.optional(v.number()),
+    fileSize: v.number(),
+    thumbFileId: v.optional(v.string()),
+    fileName: v.optional(v.string()),
+    mimeType: v.optional(v.string()),
+    title: v.optional(v.string()),
+  },
+  handler: async (ctx, a) => {
+    const listing = await ctx.db.get(a.listingId);
+    if (!listing) throw new ConvexError({ code: "NOT_FOUND", message: `Listing ${a.listingId} not found` });
+
+    // 1. Ensure thumbnail media row exists
+    let thumbMediaId: Id<"media"> | undefined;
+    if (a.thumbFileId) {
+      const existingThumb = await ctx.db
+        .query("media")
+        .filter((q) => q.eq(q.field("tgFileId"), a.thumbFileId))
+        .first();
+      if (existingThumb) {
+        thumbMediaId = existingThumb._id;
+      } else {
+        thumbMediaId = await ctx.db.insert("media", {
+          ownerId: listing.sellerId,
+          kind: "thumbnail",
+          status: "ready",
+          attached: true,
+          tgFileId: a.thumbFileId,
+          mimeType: "image/jpeg",
+          size: 1024,
+          fileName: `${(a.fileName ?? "video").replace(/\.\w+$/, "")}-thumb.jpg`,
+          width: a.width ?? 1280,
+          height: a.height ?? 720,
+          attempts: 0,
+          createdAt: Date.now(),
+        });
+      }
+    }
+
+    // 2. Ensure video media row exists
+    let mediaId: Id<"media">;
+    const existingMedia = await ctx.db
+      .query("media")
+      .filter((q) => q.eq(q.field("tgFileId"), a.fileId))
+      .first();
+    if (existingMedia) {
+      mediaId = existingMedia._id;
+      if (thumbMediaId && !existingMedia.thumbMediaId) {
+        await ctx.db.patch(mediaId, { thumbMediaId });
+      }
+    } else {
+      mediaId = await ctx.db.insert("media", {
+        ownerId: listing.sellerId,
+        kind: "video",
+        status: "ready",
+        attached: true,
+        tgFileId: a.fileId,
+        tgFileUniqueId: a.fileUniqueId,
+        tgMessageId: a.originalMessageId,
+        mimeType: a.mimeType ?? "video/mp4",
+        size: a.fileSize,
+        fileName: a.fileName,
+        width: a.width ?? 1280,
+        height: a.height ?? 720,
+        durationSec: a.durationSec,
+        thumbMediaId,
+        attempts: 0,
+        createdAt: Date.now(),
+      });
+    }
+
+    // 3. Ensure videos table row exists
+    const existingVideo = await ctx.db
+      .query("videos")
+      .withIndex("by_listing", (q) => q.eq("listingId", a.listingId))
+      .filter((q) => q.eq(q.field("mediaId"), mediaId))
+      .first();
+
+    let videoId: Id<"videos">;
+    if (existingVideo) {
+      videoId = existingVideo._id;
+      await ctx.db.patch(videoId, {
+        status: "ready",
+        moderation: "approved",
+        provider: "telegram",
+        listingActive: listing.status === "active",
+        durationSec: a.durationSec,
+        resolutions: ["720p"],
+        thumbMediaId: thumbMediaId ?? existingVideo.thumbMediaId,
+      });
+    } else {
+      videoId = await ctx.db.insert("videos", {
+        listingId: listing._id,
+        uploaderId: listing.sellerId,
+        mediaId,
+        thumbMediaId,
+        title: a.title ?? "Site walkthrough",
+        status: "ready",
+        moderation: "approved",
+        provider: "telegram",
+        durationSec: a.durationSec,
+        resolutions: ["720p"],
+        sizeBytes: a.fileSize,
+        mimeType: a.mimeType ?? "video/mp4",
+        areaId: listing.areaId,
+        landType: listing.landType,
+        price: listing.price,
+        listingActive: listing.status === "active",
+        viewCount: listing.viewCount ?? 0,
+        createdAt: Date.now(),
+        readyAt: Date.now(),
+      });
+    }
+
+    // 4. Update listing hasVideo
+    await syncListingHasVideo(ctx, listing._id);
+
+    return {
+      videoId,
+      mediaId,
+      thumbMediaId,
+      listingId: listing._id,
+      title: a.title ?? "Site walkthrough",
+      durationSec: a.durationSec,
+      resolutions: ["720p"],
+    };
+  },
+});
+
+/** Returns candidate listings for assigning telegram videos. */
+export const candidateListingsForTelegram = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const featured = await ctx.db
+      .query("listings")
+      .withIndex("by_status_featured", (q) => q.eq("status", "active").eq("isFeatured", true))
+      .collect();
+
+    const all = await ctx.db
+      .query("listings")
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .take(100);
+
+    return {
+      featured: featured.map((l) => ({
+        id: l._id,
+        title: l.title,
+        slug: l.slug,
+        areaName: l.areaName,
+        district: l.district,
+        landType: l.landType,
+        isFeatured: l.isFeatured,
+        hasVideo: l.hasVideo,
+      })),
+      all: all.map((l) => ({
+        id: l._id,
+        title: l.title,
+        slug: l.slug,
+        areaName: l.areaName,
+        district: l.district,
+        landType: l.landType,
+        isFeatured: l.isFeatured,
+        hasVideo: l.hasVideo,
+      })),
+    };
+  },
+});
+
+/** Lists all videos linked via Telegram. */
+export const linkedTelegramVideos = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const vids = await ctx.db
+      .query("videos")
+      .filter((q) => q.eq(q.field("provider"), "telegram"))
+      .collect();
+    const rows = [];
+    for (const v of vids) {
+      const listing = await ctx.db.get(v.listingId);
+      const media = v.mediaId ? await ctx.db.get(v.mediaId) : null;
+      rows.push({
+        videoId: v._id,
+        listingId: v.listingId,
+        listingTitle: listing?.title,
+        areaName: listing?.areaName,
+        title: v.title,
+        status: v.status,
+        moderation: v.moderation,
+        provider: v.provider,
+        durationSec: v.durationSec,
+        resolutions: v.resolutions,
+        tgFileId: media?.tgFileId,
+      });
+    }
+    return rows;
   },
 });

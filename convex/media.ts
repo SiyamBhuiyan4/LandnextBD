@@ -394,6 +394,7 @@ export const lookup = internalQuery({
       mimeType: m.mimeType,
       size: m.size,
       fileName: m.fileName,
+      storageId: m.storageId,
       storageUrl: m.storageId ? await ctx.storage.getUrl(m.storageId) : null,
       tgFileId: m.tgFileId,
       tgFilePath: fresh(m.tgFilePath, m.tgFilePathAt),

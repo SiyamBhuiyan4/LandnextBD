@@ -8,18 +8,31 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const { id } = await ctx.params;
   if (!/^[a-z0-9]{20,40}$/.test(id) || !CONVEX_SITE) return new Response("Not found", { status: 404 });
   const range = req.headers.get("range");
+  const url = new URL(req.url);
   try {
-    const upstream = await fetch(`${CONVEX_SITE}/media/${id}`, {
+    const upstream = await fetch(`${CONVEX_SITE}/media/${id}${url.search}`, {
       headers: range ? { Range: range } : {},
       cache: "no-store",
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(30000),
     });
     const headers = new Headers();
-    for (const h of ["content-type", "content-length", "content-range", "accept-ranges", "cache-control", "x-content-type-options", "content-disposition"]) {
+    for (const h of [
+      "content-type",
+      "content-length",
+      "content-range",
+      "accept-ranges",
+      "cache-control",
+      "x-content-type-options",
+      "content-disposition",
+      "access-control-allow-origin",
+    ]) {
       const v = upstream.headers.get(h);
       if (v) headers.set(h, v);
     }
-    if (upstream.ok) headers.set("CDN-Cache-Control", "public, max-age=31536000, immutable");
+    const upstreamCc = upstream.headers.get("cache-control") ?? "";
+    if (upstream.status === 200 && !upstreamCc.includes("no-store") && !upstreamCc.includes("private")) {
+      headers.set("CDN-Cache-Control", "public, max-age=31536000, immutable");
+    }
     return new Response(upstream.body, { status: upstream.status, headers });
   } catch {
     return new Response("Media storage temporarily unavailable", {

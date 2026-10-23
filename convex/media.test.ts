@@ -189,6 +189,67 @@ describe("multi-part push to Telegram (mocked Bot API)", () => {
     expect(m?.storageId).toBeUndefined();
     expect(await t.run((ctx) => ctx.db.system.get(storageIds[0]))).toBeNull();
   });
+
+  it("single-part media supports range requests (206) when Telegram ignores Range and caches tgFilePath", async () => {
+    process.env.TELEGRAM_BOT_TOKEN = "TEST_TOKEN";
+    process.env.TELEGRAM_CHAT_ID = "-100123";
+    const { t, as, storageIds } = await setup([PART], "video/mp4");
+    const testData = bytes(0, PART);
+    let getFileCalls = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string) => {
+        const url = String(input);
+        if (url.endsWith("/sendVideo")) {
+          return Response.json({ ok: true, result: { message_id: 11, video: { file_id: "vid1", file_unique_id: "uvid1", width: 1280, height: 720, duration: 10 } } });
+        }
+        if (url.includes("/getFile")) {
+          getFileCalls++;
+          return Response.json({ ok: true, result: { file_path: "videos/vid1.mp4" } });
+        }
+        if (url.includes("/file/bot")) {
+          // Telegram ignores Range headers and returns 200 with full file
+          return new Response(new Blob([testData as BlobPart]), { status: 200 });
+        }
+        throw new Error(`unexpected fetch ${url}`);
+      }),
+    );
+    const { mediaId } = await as.mutation(api.media.confirmUpload, { storageId: storageIds[0], kind: "video" });
+    await t.action(internal.telegram.push, { mediaId });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    // Request 1: full request (no range) returns 200 OK
+    const rFull = await t.fetch(`/media/${mediaId}`);
+    expect(rFull.status).toBe(200);
+    expect(rFull.headers.get("accept-ranges")).toBe("bytes");
+    expect(rFull.headers.get("content-length")).toBe(String(PART));
+    expect(await body(rFull)).toEqual(testData);
+    expect(getFileCalls).toBe(1);
+
+    // Request 2: Safari probe bytes=0-1 returns 206 Partial Content (sliced from Telegram's 200 response)
+    const rProbe = await t.fetch(`/media/${mediaId}`, { headers: { Range: "bytes=0-1" } });
+    expect(rProbe.status).toBe(206);
+    expect(rProbe.headers.get("content-range")).toBe(`bytes 0-1/${PART}`);
+    expect(rProbe.headers.get("content-length")).toBe("2");
+    expect(await body(rProbe)).toEqual(bytes(0, 2));
+
+    // Request 3: Seeking bytes=500-599 returns 206 Partial Content
+    const rSeek = await t.fetch(`/media/${mediaId}`, { headers: { Range: "bytes=500-599" } });
+    expect(rSeek.status).toBe(206);
+    expect(rSeek.headers.get("content-range")).toBe(`bytes 500-599/${PART}`);
+    expect(rSeek.headers.get("content-length")).toBe("100");
+    expect(await body(rSeek)).toEqual(bytes(500, 600));
+
+    // Request 4: Unsatisfiable range
+    const rBad = await t.fetch(`/media/${mediaId}`, { headers: { Range: `bytes=${PART}-` } });
+    expect(rBad.status).toBe(416);
+    expect(rBad.headers.get("content-range")).toBe(`bytes */${PART}`);
+
+    // Verify resolveFilePath caching: getFile should only have been called ONCE across all 4 requests!
+    expect(getFileCalls).toBe(1);
+    const m = await t.run((ctx) => ctx.db.get(mediaId));
+    expect(m?.tgFilePath).toBe("videos/vid1.mp4");
+  });
 });
 
 describe("robustness", () => {
