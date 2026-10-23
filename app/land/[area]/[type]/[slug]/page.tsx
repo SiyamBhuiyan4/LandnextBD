@@ -13,7 +13,7 @@ type Params = { area: string; type: string; slug: string };
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { slug } = await params;
-  const l = await fetchQuery(api.listings.getBySlug, { slug });
+  const l = await fetchQuery(api.listings.getBySlug, { slug }).catch(() => null);
   if (!l) return { title: "Listing not found", robots: { index: false } };
   const description = `${formatBDT(l.price)} · ${l.sizeValue} ${l.sizeUnit} · ${l.areaName}, ${l.district}. ${l.description.slice(0, 140)}`;
   const image = l.coverUrl ? new URL(l.coverUrl, SITE).toString() : undefined;
@@ -30,8 +30,14 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 export default async function ListingPage({ params }: { params: Promise<Params> }) {
   const { area, type, slug } = await params;
   const token = await convexAuthNextjsToken();
-  const preloaded = await preloadQuery(api.listings.getBySlug, { slug }, { token });
-  const l = preloadedQueryResult(preloaded);
+  let l;
+  let preloaded;
+  try {
+    preloaded = await preloadQuery(api.listings.getBySlug, { slug }, { token });
+    l = preloadedQueryResult(preloaded);
+  } catch {
+    notFound();
+  }
   if (!l) notFound();
   const canonical = listingHref(l);
   if (canonical !== `/land/${area}/${type}/${slug}`) permanentRedirect(canonical);

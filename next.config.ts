@@ -37,6 +37,7 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 31536000,
   },
   turbopack: {
+    root: __dirname,
     rules: {
       // Only our stylesheet: next/font generates CSS too, and Tailwind must not touch it.
       "globals.css": {

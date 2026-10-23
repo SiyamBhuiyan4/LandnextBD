@@ -6,7 +6,7 @@ import { useCallback, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { chunkBounds } from "@/lib/chunks";
-import { uploadWithProgress, videoInfo } from "@/lib/client";
+import { uploadTelegramWithProgress, videoInfo } from "@/lib/client";
 import { CONFIG } from "@/lib/constants";
 
 export type UploadKind = "image" | "document" | "video";
@@ -35,16 +35,13 @@ async function compressImage(file: File): Promise<File> {
 const tooLarge = (msg: string) => new ConvexError({ code: "INVALID_FILE", message: msg });
 
 /**
- * Signed-URL upload: bytes go browser -> Convex storage directly, then the
- * server validates type/size and queues the move to Telegram. Files bigger
- * than CONFIG.telegramChunkBytes (big videos) are sent as consecutive slices,
- * each to its own upload URL, and confirmed together as one media item.
+ * Direct Telegram CDN Upload: bytes stream directly to Telegram Bot channel
+ * via the Next.js /api/media/upload streaming gateway, bypassing Convex storage
+ * completely. The Telegram file_id is registered directly into the Convex media table.
  */
 export function useUpload() {
-  const gen = useMutation(api.media.generateUploadUrl);
-  const confirm = useMutation(api.media.confirmUpload);
-  const confirmParts = useMutation(api.media.confirmParts);
-  const discard = useMutation(api.media.discardUploads);
+  const registerUpload = useMutation(api.media.registerDirectUpload);
+  const registerParts = useMutation(api.media.registerDirectParts);
   const [jobs, setJobs] = useState<UploadJob[]>([]);
 
   const upload = useCallback(
@@ -52,8 +49,6 @@ export function useUpload() {
       const key = `${raw.name}-${raw.size}-${Date.now()}`;
       const setPct = (pct: number) => setJobs((j) => j.map((x) => (x.key === key ? { ...x, pct: Math.min(100, Math.round(pct)) } : x)));
       setJobs((j) => [...j, { key, name: raw.name, pct: 0 }]);
-      const uploaded: string[] = [];
-      let confirmed = false;
       try {
         if (kind === "video") {
           if (!(CONFIG.videoMimeTypes as readonly string[]).includes(raw.type)) throw tooLarge(`File type ${raw.type || "unknown"} is not allowed.`);
@@ -65,44 +60,75 @@ export function useUpload() {
         if (kind === "video" && durationSec !== undefined && durationSec > CONFIG.maxVideoDurationSec)
           throw tooLarge(`Videos can be at most ${CONFIG.maxVideoDurationSec / 60} minutes.`);
 
-        // One storage upload per slice (single slice for normal files), retried on network errors.
-        const sendBlob = async (blob: Blob, onPct: (pct: number) => void, type: string) => {
-          for (let attempt = 1; ; attempt++) {
-            try {
-              const id = await uploadWithProgress(await gen({ kind }), blob, onPct, type);
-              uploaded.push(id);
-              return id as Id<"_storage">;
-            } catch (e) {
-              if (attempt >= 3 || e instanceof ConvexError) throw e;
-              await new Promise((r) => setTimeout(r, 1500 * attempt));
-            }
+        let thumb: { fileId: string; uniqueId?: string; size?: number } | undefined;
+        if (info.poster) {
+          try {
+            const posterRes = await uploadTelegramWithProgress(info.poster, "poster.jpg", "image", () => {});
+            thumb = {
+              fileId: posterRes.tgFileId,
+              uniqueId: posterRes.tgFileUniqueId,
+              size: posterRes.size,
+            };
+          } catch {
+            /* optional poster */
           }
-        };
-
-        let thumbStorageId: Id<"_storage"> | undefined;
-        if (info.poster) thumbStorageId = await sendBlob(info.poster, () => {}, "image/jpeg").catch(() => undefined);
+        }
 
         let res: { mediaId: Id<"media">; url: string | null };
         if (file.size <= CONFIG.telegramChunkBytes) {
-          const storageId = await sendBlob(file, setPct, file.type);
-          res = await confirm({ storageId, kind, fileName: raw.name, durationSec, thumbStorageId });
+          const up = await uploadTelegramWithProgress(file, raw.name, kind, setPct, durationSec);
+          res = await registerUpload({
+            kind,
+            tgFileId: up.tgFileId,
+            tgFileUniqueId: up.tgFileUniqueId,
+            tgMessageId: up.tgMessageId,
+            mimeType: up.mimeType || file.type || "application/octet-stream",
+            size: up.size || file.size,
+            fileName: raw.name,
+            width: up.width,
+            height: up.height,
+            durationSec,
+            thumb: thumb || up.thumb,
+          });
         } else {
-          const storageIds: Id<"_storage">[] = [];
-          for (const { start, end } of chunkBounds(file.size, CONFIG.telegramChunkBytes)) {
-            storageIds.push(await sendBlob(file.slice(start, end), (pct) => setPct(((start + ((end - start) * pct) / 100) / file.size) * 100), file.type));
+          // Multi-part video upload: slice into <= 19MB chunks directly to Telegram
+          const bounds = chunkBounds(file.size, CONFIG.telegramChunkBytes);
+          const parts: { size: number; tgFileId: string; tgFileUniqueId?: string; tgMessageId: number }[] = [];
+          for (const [idx, { start, end }] of bounds.entries()) {
+            const slice = file.slice(start, end);
+            const partName = `${raw.name}.part${idx + 1}`;
+            const up = await uploadTelegramWithProgress(
+              slice,
+              partName,
+              kind,
+              (pct) => setPct(((start + ((end - start) * pct) / 100) / file.size) * 100),
+              durationSec,
+            );
+            parts.push({
+              size: up.size || slice.size,
+              tgFileId: up.tgFileId,
+              tgFileUniqueId: up.tgFileUniqueId,
+              tgMessageId: up.tgMessageId,
+            });
           }
-          res = await confirmParts({ storageIds, size: file.size, mimeType: file.type, kind, fileName: raw.name, durationSec, thumbStorageId });
+          res = await registerParts({
+            kind,
+            parts,
+            size: file.size,
+            mimeType: file.type || "video/mp4",
+            fileName: raw.name,
+            durationSec,
+            thumb,
+          });
         }
-        confirmed = true;
         setJobs((j) => j.filter((x) => x.key !== key));
         return { ...res, durationSec };
       } catch (e) {
         setJobs((j) => j.filter((x) => x.key !== key));
-        if (!confirmed && uploaded.length) void discard({ storageIds: uploaded as Id<"_storage">[] }).catch(() => {});
         throw e;
       }
     },
-    [gen, confirm, confirmParts, discard],
+    [registerUpload, registerParts],
   );
 
   return { upload, jobs };

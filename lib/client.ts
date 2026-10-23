@@ -49,6 +49,60 @@ export function writeLocal(key: string, value: unknown) {
   }
 }
 
+export type TelegramUploadResult = {
+  ok: boolean;
+  tgFileId: string;
+  tgFileUniqueId?: string;
+  tgMessageId: number;
+  mimeType: string;
+  size: number;
+  fileName: string;
+  width?: number;
+  height?: number;
+  durationSec?: number;
+  thumb?: { fileId: string; uniqueId?: string; size?: number };
+};
+
+/** Upload a file directly to Telegram CDN via streaming API route, with progress. */
+export function uploadTelegramWithProgress(
+  file: Blob,
+  fileName: string,
+  kind: string,
+  onProgress: (pct: number) => void,
+  durationSec?: number,
+): Promise<TelegramUploadResult> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/media/upload");
+    const fd = new FormData();
+    fd.append("file", file, fileName);
+    fd.append("kind", kind);
+    if (durationSec !== undefined) fd.append("durationSec", String(durationSec));
+
+    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(Math.round((e.loaded / e.total) * 100));
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const res = JSON.parse(xhr.responseText);
+          if (res.ok) resolve(res);
+          else reject(new Error(res.error || "Telegram upload failed"));
+        } catch {
+          reject(new Error("Upload response parsing failed"));
+        }
+      } else {
+        try {
+          const res = JSON.parse(xhr.responseText);
+          reject(new Error(res.error || `Upload failed (${xhr.status})`));
+        } catch {
+          reject(new Error(`Upload failed (${xhr.status})`));
+        }
+      }
+    };
+    xhr.onerror = () => reject(new Error("Network error during Telegram upload"));
+    xhr.send(fd);
+  });
+}
+
 /** Upload a file (or a slice of one) straight to Convex storage via a signed URL, with progress. */
 export function uploadWithProgress(url: string, file: Blob, onProgress: (pct: number) => void, contentType?: string): Promise<string> {
   return new Promise((resolve, reject) => {

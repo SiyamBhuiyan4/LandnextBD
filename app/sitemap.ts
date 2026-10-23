@@ -8,7 +8,10 @@ const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [listings, areas] = await Promise.all([fetchQuery(api.listings.sitemapEntries, {}), fetchQuery(api.areas.all, {})]);
+  const [listings, areas] = await Promise.all([
+    fetchQuery(api.listings.sitemapEntries, {}).catch(() => []),
+    fetchQuery(api.areas.all, {}).catch(() => []),
+  ]);
   const typesByArea = new Map<string, Set<string>>();
   for (const l of listings) {
     const set = typesByArea.get(l.areaSlug) ?? new Set();

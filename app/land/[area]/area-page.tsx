@@ -14,7 +14,7 @@ import { landTypeToSlug, listingHref, slugToLandType } from "@/lib/urls";
 // then the live, filterable browse view takes over.
 
 async function resolve(areaSlug: string, typeSlug?: string) {
-  const area = await fetchQuery(api.areas.bySlug, { slug: areaSlug });
+  const area = await fetchQuery(api.areas.bySlug, { slug: areaSlug }).catch(() => null);
   const landType = typeSlug ? slugToLandType(typeSlug) : undefined;
   if (!area || landType === null) return null;
   return { area, landType: landType ?? undefined };
@@ -41,10 +41,12 @@ export async function AreaPage({ areaSlug, typeSlug }: { areaSlug: string; typeS
   const locale = await getLocale();
   const placeName = locale === "bn" && r.area.areaNameBn ? r.area.areaNameBn : r.area.areaName;
   const filters = { areaId: r.area._id, landType: r.landType as LandType | undefined };
-  const [first, count] = await Promise.all([
-    fetchQuery(api.listings.search, { filters, paginationOpts: { numItems: 12, cursor: null } }),
-    fetchQuery(api.listings.count, { filters }),
+  const [firstRes, countRes] = await Promise.all([
+    fetchQuery(api.listings.search, { filters, paginationOpts: { numItems: 12, cursor: null } }).catch(() => null),
+    fetchQuery(api.listings.count, { filters }).catch(() => null),
   ]);
+  const first = firstRes ?? { page: [], isDone: true, continueCursor: "" };
+  const count = countRes ?? { total: 0, capped: false };
   const crumbs = [
     { label: t("home"), href: "/" },
     { label: t("landForSale"), href: "/browse" },

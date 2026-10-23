@@ -213,6 +213,111 @@ export const confirmParts = mutation({
   },
 });
 
+/** Direct upload to Telegram CDN (bypasses Convex storage entirely). */
+export const registerDirectUpload = mutation({
+  args: {
+    kind: vKind,
+    tgFileId: v.string(),
+    tgFileUniqueId: v.optional(v.string()),
+    tgMessageId: v.number(),
+    mimeType: v.string(),
+    size: v.number(),
+    fileName: v.optional(v.string()),
+    width: v.optional(v.number()),
+    height: v.optional(v.number()),
+    durationSec: v.optional(v.number()),
+    thumb: v.optional(v.object({ fileId: v.string(), uniqueId: v.optional(v.string()), size: v.optional(v.number()) })),
+  },
+  handler: async (ctx, a) => {
+    const user = await requireRole(ctx, SELLER_ROLES);
+    let thumbMediaId: Id<"media"> | undefined;
+    if (a.thumb) {
+      thumbMediaId = await ctx.db.insert("media", {
+        ownerId: user._id,
+        kind: "thumbnail",
+        status: "ready",
+        attached: true,
+        tgFileId: a.thumb.fileId,
+        tgFileUniqueId: a.thumb.uniqueId,
+        mimeType: "image/jpeg",
+        size: a.thumb.size ?? 0,
+        attempts: 0,
+        createdAt: Date.now(),
+      });
+    }
+    const id = await ctx.db.insert("media", {
+      ownerId: user._id,
+      kind: a.kind,
+      status: "ready",
+      attached: false,
+      tgFileId: a.tgFileId,
+      tgFileUniqueId: a.tgFileUniqueId,
+      tgMessageId: a.tgMessageId,
+      mimeType: a.mimeType,
+      size: a.size,
+      fileName: a.fileName?.slice(0, 120),
+      width: a.width,
+      height: a.height,
+      durationSec: a.durationSec,
+      thumbMediaId,
+      attempts: 0,
+      createdAt: Date.now(),
+    });
+    return { mediaId: id, url: a.kind === "document" ? null : mediaUrl(id) };
+  },
+});
+
+/** Direct multi-part upload to Telegram CDN for files > 19 MB. */
+export const registerDirectParts = mutation({
+  args: {
+    kind: vKind,
+    parts: v.array(v.object({
+      size: v.number(),
+      tgFileId: v.string(),
+      tgFileUniqueId: v.optional(v.string()),
+      tgMessageId: v.number(),
+    })),
+    size: v.number(),
+    mimeType: v.string(),
+    fileName: v.optional(v.string()),
+    durationSec: v.optional(v.number()),
+    thumb: v.optional(v.object({ fileId: v.string(), uniqueId: v.optional(v.string()), size: v.optional(v.number()) })),
+  },
+  handler: async (ctx, a) => {
+    const user = await requireRole(ctx, SELLER_ROLES);
+    let thumbMediaId: Id<"media"> | undefined;
+    if (a.thumb) {
+      thumbMediaId = await ctx.db.insert("media", {
+        ownerId: user._id,
+        kind: "thumbnail",
+        status: "ready",
+        attached: true,
+        tgFileId: a.thumb.fileId,
+        tgFileUniqueId: a.thumb.uniqueId,
+        mimeType: "image/jpeg",
+        size: a.thumb.size ?? 0,
+        attempts: 0,
+        createdAt: Date.now(),
+      });
+    }
+    const id = await ctx.db.insert("media", {
+      ownerId: user._id,
+      kind: a.kind,
+      status: "ready",
+      attached: false,
+      parts: a.parts,
+      mimeType: a.mimeType,
+      size: a.size,
+      fileName: a.fileName?.slice(0, 120),
+      durationSec: a.durationSec,
+      thumbMediaId,
+      attempts: 0,
+      createdAt: Date.now(),
+    });
+    return { mediaId: id, url: a.kind === "document" ? null : mediaUrl(id) };
+  },
+});
+
 /**
  * Removes storage files from an upload that failed before it was confirmed
  * (e.g. the network dropped after 30 of 54 parts). Only recent files that no
